@@ -114,6 +114,18 @@ function initBookingForm() {
   const status = document.getElementById('booking-status');
   if (!form || !status) return;
 
+  // On mobile: scroll to first invalid field when validation fails
+  let firstInvalidHandled = false;
+  form.addEventListener('invalid', (e) => {
+    if (!firstInvalidHandled) {
+      firstInvalidHandled = true;
+      setTimeout(() => {
+        e.target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 100);
+    }
+  }, true);
+  form.addEventListener('submit', () => { firstInvalidHandled = false; });
+
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
 
