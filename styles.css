@@ -614,6 +614,14 @@ section h2 {
   color: var(--color-accent);
 }
 
+.contact-item.contact-location {
+  cursor: default;
+}
+
+.contact-item.contact-location:hover {
+  color: inherit;
+}
+
 .contact-label {
   font-size: 0.75rem;
   letter-spacing: 0.15em;

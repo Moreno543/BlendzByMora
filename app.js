@@ -6,6 +6,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initMobileMenu();
   initDatePicker();
   initBookingForm();
+  initTravelNotes();
   initReviewForm();
   loadReviews();
   showSupabaseHintIfNeeded();
@@ -138,6 +139,25 @@ function populateAllSlots(select, slots) {
   });
 }
 
+function initTravelNotes() {
+  const travelSelect = document.getElementById('travel');
+  const notesField = document.getElementById('notes');
+  if (!travelSelect || !notesField) return;
+
+  const travelPrefix = 'Travel requested — please include your location/address. ';
+
+  travelSelect.addEventListener('change', () => {
+    const notes = notesField.value;
+    if (travelSelect.value === 'Yes') {
+      if (!notes.startsWith(travelPrefix)) {
+        notesField.value = travelPrefix + notes.replace(travelPrefix, '').trim();
+      }
+    } else {
+      notesField.value = notes.replace(travelPrefix, '').trim();
+    }
+  });
+}
+
 // Booking form submit
 function initBookingForm() {
   const form = document.getElementById('booking-form');
@@ -166,6 +186,11 @@ function initBookingForm() {
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
 
+    let notes = form.notes.value || '';
+    if (form.travel?.value === 'Yes') {
+      notes = 'Travel requested. ' + notes;
+    }
+
     const payload = {
       service: form.service.value,
       date: form.date.value,
@@ -173,7 +198,7 @@ function initBookingForm() {
       name: form.name.value,
       email: form.email.value,
       phone: form.phone.value,
-      notes: form.notes.value || '',
+      notes,
     };
 
     status.className = 'booking-status loading';
