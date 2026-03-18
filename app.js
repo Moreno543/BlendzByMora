@@ -198,6 +198,7 @@ function initBookingForm() {
       name: form.name.value,
       email: form.email.value,
       phone: form.phone.value,
+      travel: form.travel?.value || 'No',
       notes,
     };
 
@@ -256,12 +257,6 @@ function initReviewForm() {
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
 
-    const payload = {
-      name: form.querySelector('#review-name').value,
-      rating: form.querySelector('#review-rating').value,
-      review: form.querySelector('#review-text').value,
-    };
-
     const hasSupabase = CONFIG.SUPABASE_URL && CONFIG.SUPABASE_ANON_KEY;
     const hasFormspree = CONFIG.FORMSPREE_REVIEW_ID;
 
@@ -271,6 +266,12 @@ function initReviewForm() {
     }
 
     try {
+      const payload = {
+        name: form.querySelector('#review-name').value,
+        rating: form.querySelector('#review-rating').value,
+        review: form.querySelector('#review-text').value,
+      };
+
       if (hasSupabase) {
         const client = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
         const { error } = await client.from('reviews').insert([payload]);
@@ -279,7 +280,7 @@ function initReviewForm() {
 
       if (hasFormspree) {
         const formData = new FormData();
-        Object.entries(payload).forEach(([k, v]) => formData.append(k, v));
+        Object.entries(payload).forEach(([k, v]) => { if (v) formData.append(k, v); });
         await fetch(`https://formspree.io/f/${CONFIG.FORMSPREE_REVIEW_ID}`, {
           method: 'POST',
           body: formData,
@@ -303,7 +304,7 @@ let currentReviewIndex = 0;
 // Load and display reviews
 async function loadReviews() {
   const list = document.getElementById('reviews-list');
-  const counter = document.getElementById('reviews-counter');
+  const dotsContainer = document.getElementById('reviews-dots');
   if (!list) return;
 
   if (CONFIG.SUPABASE_URL && CONFIG.SUPABASE_ANON_KEY) {
@@ -315,6 +316,7 @@ async function loadReviews() {
         currentReviewIndex = 0;
         renderReviewCarousel();
         initReviewCarousel();
+        renderReviewDots();
         return;
       }
     } catch (err) {
@@ -324,28 +326,46 @@ async function loadReviews() {
 
   reviewsData = [];
   list.innerHTML = '<p class="review-item-text" style="text-align:center;color:var(--color-text-muted);padding:2rem">No reviews yet. Be the first to leave one!</p>';
-  if (counter) counter.textContent = '';
+  if (dotsContainer) dotsContainer.innerHTML = '';
 }
 
 function renderReviewCarousel() {
   const list = document.getElementById('reviews-list');
-  const counter = document.getElementById('reviews-counter');
+  const dotsContainer = document.getElementById('reviews-dots');
   if (!list || !reviewsData.length) return;
 
   const r = reviewsData[currentReviewIndex];
+  const initial = escapeHtml(r.name).charAt(0).toUpperCase();
+
   list.innerHTML = `
-    <div class="review-item">
-      <div class="review-item-header">
-        <span class="review-item-rating">${'★'.repeat(Number(r.rating))}${'☆'.repeat(5 - Number(r.rating))}</span>
-        <span class="review-item-name">${escapeHtml(r.name)}</span>
-      </div>
+    <div class="review-item review-item-allure">
+      <div class="review-item-image"><div class="review-item-placeholder"><span>${initial}</span></div></div>
+      <div class="review-item-name">${escapeHtml(r.name)}</div>
+      <div class="review-item-rating">${'★'.repeat(Number(r.rating))}${'☆'.repeat(5 - Number(r.rating))}</div>
       <p class="review-item-text">${escapeHtml(r.review)}</p>
     </div>
   `;
 
-  if (counter) {
-    counter.textContent = reviewsData.length > 1 ? `${currentReviewIndex + 1} / ${reviewsData.length}` : '';
-  }
+  if (reviewsData.length > 1 && dotsContainer) renderReviewDots();
+  const prevBtn = document.querySelector('.carousel-prev');
+  const nextBtn = document.querySelector('.carousel-next');
+  if (prevBtn) { prevBtn.disabled = currentReviewIndex === 0; prevBtn.style.opacity = currentReviewIndex === 0 ? '0.4' : '1'; }
+  if (nextBtn) { nextBtn.disabled = currentReviewIndex === reviewsData.length - 1; nextBtn.style.opacity = currentReviewIndex === reviewsData.length - 1 ? '0.4' : '1'; }
+}
+
+function renderReviewDots() {
+  const dotsContainer = document.getElementById('reviews-dots');
+  if (!dotsContainer || reviewsData.length <= 1) return;
+  dotsContainer.innerHTML = reviewsData.map((_, i) =>
+    `<button type="button" class="review-dot ${i === currentReviewIndex ? 'active' : ''}" data-index="${i}" aria-label="Go to review ${i + 1}"></button>`
+  ).join('');
+  dotsContainer.querySelectorAll('.review-dot').forEach((btn) => {
+    btn.onclick = () => {
+      currentReviewIndex = parseInt(btn.dataset.index, 10);
+      renderReviewCarousel();
+      renderReviewDots();
+    };
+  });
 }
 
 function initReviewCarousel() {
@@ -360,14 +380,36 @@ function initReviewCarousel() {
   if (prevBtn) prevBtn.style.visibility = 'visible';
   if (nextBtn) nextBtn.style.visibility = 'visible';
 
-  if (prevBtn) prevBtn.onclick = () => {
-    currentReviewIndex = (currentReviewIndex - 1 + reviewsData.length) % reviewsData.length;
+  const go = () => {
     renderReviewCarousel();
+    renderReviewDots();
+    updateArrowStates();
+  };
+
+  function updateArrowStates() {
+    if (prevBtn) {
+      prevBtn.disabled = currentReviewIndex === 0;
+      prevBtn.style.opacity = currentReviewIndex === 0 ? '0.4' : '1';
+    }
+    if (nextBtn) {
+      nextBtn.disabled = currentReviewIndex === reviewsData.length - 1;
+      nextBtn.style.opacity = currentReviewIndex === reviewsData.length - 1 ? '0.4' : '1';
+    }
+  }
+
+  if (prevBtn) prevBtn.onclick = () => {
+    if (currentReviewIndex > 0) {
+      currentReviewIndex--;
+      go();
+    }
   };
   if (nextBtn) nextBtn.onclick = () => {
-    currentReviewIndex = (currentReviewIndex + 1) % reviewsData.length;
-    renderReviewCarousel();
+    if (currentReviewIndex < reviewsData.length - 1) {
+      currentReviewIndex++;
+      go();
+    }
   };
+  updateArrowStates();
 }
 
 function escapeHtml(text) {

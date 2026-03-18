@@ -36,6 +36,7 @@ CREATE TABLE bookings (
   name TEXT NOT NULL,
   email TEXT NOT NULL,
   phone TEXT NOT NULL,
+  travel TEXT DEFAULT 'No',
   notes TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -63,6 +64,7 @@ CREATE TABLE reviews (
   name TEXT NOT NULL,
   rating TEXT NOT NULL,
   review TEXT NOT NULL,
+  image_url TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -77,6 +79,40 @@ CREATE POLICY "Allow anonymous select reviews" ON reviews
 
 3. Click **Run**
 4. You should see "Success. No rows returned"
+
+### Add Travel & Image Columns (if tables already exist)
+
+If you already created the tables, run these to add new columns:
+
+```sql
+ALTER TABLE bookings ADD COLUMN IF NOT EXISTS travel TEXT DEFAULT 'No';
+ALTER TABLE reviews ADD COLUMN IF NOT EXISTS image_url TEXT;
+```
+
+### Create Storage Bucket (for review photos)
+
+1. Go to **Storage** in the left sidebar
+2. Click **New bucket**
+3. Name it `review-images` (must match exactly)
+4. Enable **Public bucket** so images can be displayed on the site
+5. Click **Create bucket**
+6. Add the upload policy via **SQL Editor** (required for anonymous uploads):
+
+```sql
+-- Allow anonymous uploads to review-images bucket (required for review form)
+CREATE POLICY "Allow upload on review-images"
+ON storage.objects FOR INSERT
+TO anon
+WITH CHECK (bucket_id = 'review-images');
+
+-- Allow anyone to read (view) images from review-images bucket
+CREATE POLICY "Allow read on review-images"
+ON storage.objects FOR SELECT
+TO anon
+USING (bucket_id = 'review-images');
+```
+
+7. Click **Run** in the SQL Editor
 
 ---
 
