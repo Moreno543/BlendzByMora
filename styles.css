@@ -267,8 +267,15 @@ section h2 {
   color: var(--color-text-muted);
 }
 
+.about-social {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-top: 1rem;
+}
+
 .btn-instagram {
-  margin-top: 0.5rem;
+  margin-top: 0;
 }
 
 /* Booking */
