@@ -136,7 +136,7 @@ function initBookingForm() {
 
     if (!hasSupabase && !hasFormspree) {
       status.className = 'booking-status error';
-      status.textContent = 'Booking is not yet configured. Please call (909) 210-3239 or email BlendzByMora@gmail.com to book.';
+      status.textContent = 'Booking is not yet configured. Please email BlendzByMora@gmail.com to book.';
       status.style.display = 'block';
       return;
     }
@@ -168,7 +168,7 @@ function initBookingForm() {
       if (flatpickrInstance) flatpickrInstance.clear();
     } catch (err) {
       status.className = 'booking-status error';
-      status.textContent = 'Something went wrong. Please call (909) 210-3239 or email BlendzByMora@gmail.com to book.';
+      status.textContent = 'Something went wrong. Please email BlendzByMora@gmail.com to book.';
       console.error(err);
     }
   });
