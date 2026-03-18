@@ -77,12 +77,22 @@ function initDatePicker() {
   const dateInput = document.getElementById('date');
   if (!dateInput) return;
 
+  const blackoutSet = new Set(CONFIG.BLACKOUT_DATES || []);
+  const range = CONFIG.BLACKOUT_RANGE;
+  const blockWeekdays = new Set(range?.blockWeekdays || []);
+
   flatpickrInstance = flatpickr(dateInput, {
     dateFormat: 'Y-m-d',
     minDate: 'today',
     disable: [
       function(date) {
-        return date.getDay() === 0; // Disable Sundays
+        const y = date.getFullYear(), m = String(date.getMonth() + 1).padStart(2, '0'), d = String(date.getDate()).padStart(2, '0');
+        const dateStr = `${y}-${m}-${d}`;
+        if (blackoutSet.has(dateStr)) return true;
+        if (range?.start && range?.end && blockWeekdays.size) {
+          if (dateStr >= range.start && dateStr <= range.end && blockWeekdays.has(date.getDay())) return true;
+        }
+        return false;
       }
     ],
     onChange: function(selectedDates, dateStr) {

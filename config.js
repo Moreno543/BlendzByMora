@@ -48,4 +48,27 @@ const CONFIG = {
   GOOGLE_REVIEW_URL: 'https://www.google.com/search?q=BlendzByMora&stick=H4sIAAAAAAAA_-NgU1I1qEhMSzUzNzW2tLBMSUlLszS3MqhINTEzNEtJS04xNzA0MTKyWMTK45STmpdS5VTpm1-UCADuQv8zOAAAAA&hl=en',
   // Or use Place ID for direct writereview link: https://developers.google.com/maps/documentation/places/web-service/place-id
   GOOGLE_PLACE_ID: '',
+
+  // Blackout: Mon–Thu from May 4 – Oct 28, 2026
+  BLACKOUT_RANGE: {
+    start: '2026-05-04',
+    end: '2026-10-28',
+    blockWeekdays: [1, 2, 3, 4],  // Monday through Thursday
+  },
+
+  // Blackout: specific dates (April 6–10, 2026 + 2026 federal holidays)
+  BLACKOUT_DATES: [
+    '2026-04-06', '2026-04-07', '2026-04-08', '2026-04-09', '2026-04-10',  // April 6–10
+    '2026-01-01',   // New Year's Day
+    '2026-01-19',   // Martin Luther King Jr. Day
+    '2026-02-16',   // Presidents' Day
+    '2026-05-25',   // Memorial Day
+    '2026-06-19',   // Juneteenth
+    '2026-07-04',   // Independence Day
+    '2026-09-07',   // Labor Day
+    '2026-10-12',   // Columbus Day
+    '2026-11-11',   // Veterans Day
+    '2026-11-26',   // Thanksgiving
+    '2026-12-25',   // Christmas
+  ],
 };
