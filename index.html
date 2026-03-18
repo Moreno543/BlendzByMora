@@ -7,7 +7,9 @@
   <meta name="description" content="Blendz By Mora – Professional makeup artist in Las Vegas. Bridal, soft glam, full glam makeup. Book your appointment online. 12+ years experience.">
   <meta name="keywords" content="BlendzByMora, Blendz By Mora, makeup artist Las Vegas, bridal makeup Las Vegas, glam makeup, Las Vegas MUA">
   <link rel="canonical" href="https://blendzbymora.com/">
-  <link rel="icon" href="assets/profile.png" type="image/png">
+  <link rel="icon" href="https://blendzbymora.com/assets/profile.png" type="image/png" sizes="48x48">
+  <link rel="icon" href="https://blendzbymora.com/assets/profile.png" type="image/png" sizes="192x192">
+  <link rel="apple-touch-icon" href="https://blendzbymora.com/assets/profile.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -29,6 +31,7 @@
         <a href="#reviews">Reviews</a>
         <a href="#contact">Contact</a>
         <a href="#book" class="nav-book">Book Now</a>
+        <div id="google_translate_element" class="translate-widget"></div>
       </nav>
       <button class="mobile-menu-btn" aria-label="Toggle menu">
         <span></span><span></span><span></span>
@@ -113,7 +116,7 @@
       <img src="assets/profile.png" alt="Mora" class="about-pic">
       <div class="about-text">
         <p>With over 12 years of professional experience in makeup artistry, I bring expertise, creativity, and precision to every client. Based in Las Vegas, Nevada, I specialize in bridal, soft glam, and full glam makeup and am committed to enhancing your natural beauty and ensuring you look and feel confident for every occasion.</p>
-        <p>From brides on their wedding day to clients preparing for special events, I tailor each look to your unique features and vision. I primarily work in the Las Vegas area but also offer travel services—simply select the travel option during booking and include your location details in the notes. Explore my portfolio and stay connected on Instagram and TikTok.</p>
+        <p>I am fluent in English and Spanish, so I can comfortably communicate with you in either language throughout your appointment. From brides on their wedding day to clients preparing for special events, I tailor each look to your unique features and vision. I primarily work in the Las Vegas area but also offer travel services—simply select the travel option during booking and include your location details in the notes. Explore my portfolio and stay connected on Instagram and TikTok.</p>
         <div class="about-social">
           <a href="https://www.instagram.com/blendzbymora?igsh=MW1rdG81ZWJrOXM4NQ==" target="_blank" rel="noopener noreferrer" class="btn btn-instagram">View Instagram</a>
           <a href="https://www.tiktok.com/@blendzbymora" target="_blank" rel="noopener noreferrer" class="btn btn-instagram">View TikTok</a>
@@ -286,5 +289,16 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js"></script>
   <script src="app.js"></script>
+  <script type="text/javascript">
+    function googleTranslateElementInit() {
+      new google.translate.TranslateElement({
+        pageLanguage: 'en',
+        includedLanguages: 'en,es',
+        layout: google.translate.TranslateElement.InlineLayout.SIMPLE,
+        autoDisplay: false
+      }, 'google_translate_element');
+    }
+  </script>
+  <script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
 </body>
 </html>

@@ -4,7 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Terms of Service | Blendz By Mora</title>
-  <link rel="icon" href="assets/profile.png" type="image/png">
+  <link rel="icon" href="https://blendzbymora.com/assets/profile.png" type="image/png" sizes="48x48">
+  <link rel="apple-touch-icon" href="https://blendzbymora.com/assets/profile.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=Montserrat:wght@400;500&display=swap" rel="stylesheet">
@@ -20,7 +21,10 @@
 </head>
 <body>
   <div class="legal-page">
-    <a href="index.html" class="back-link">← Back to Blendz By Mora</a>
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 2rem;">
+      <a href="index.html" class="back-link">← Back to Blendz By Mora</a>
+      <div id="google_translate_element" class="translate-widget"></div>
+    </div>
     <h1>Terms of Service</h1>
     <p>Last updated: March 2026</p>
 
@@ -45,5 +49,33 @@
     <h2>7. Contact</h2>
     <p>For questions about these terms, contact us at <a href="mailto:BlendzByMora@gmail.com">BlendzByMora@gmail.com</a>.</p>
   </div>
+  <script type="text/javascript">
+    function googleTranslateElementInit() {
+      new google.translate.TranslateElement({
+        pageLanguage: 'en',
+        includedLanguages: 'en,es',
+        layout: google.translate.TranslateElement.InlineLayout.SIMPLE,
+        autoDisplay: false
+      }, 'google_translate_element');
+      initGoogleTranslateBarHider();
+    }
+    function initGoogleTranslateBarHider() {
+      function hideBar() {
+        document.body.style.top = '0';
+        document.body.style.marginTop = '0';
+        document.body.style.paddingTop = '0';
+        document.querySelectorAll('iframe.goog-te-banner-frame, .goog-te-banner-frame').forEach(function(el) {
+          if (!el.closest('#google_translate_element') && !el.closest('.translate-widget')) {
+            el.style.cssText = 'display:none!important;height:0!important;visibility:hidden!important';
+          }
+        });
+      }
+      hideBar();
+      var observer = new MutationObserver(hideBar);
+      observer.observe(document.body, { childList: true, subtree: true });
+      [100, 300, 500, 1000, 2000, 3000, 5000, 10000].forEach(function(ms) { setTimeout(hideBar, ms); });
+    }
+  </script>
+  <script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
 </body>
 </html>

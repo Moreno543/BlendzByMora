@@ -12,7 +12,25 @@ document.addEventListener('DOMContentLoaded', () => {
   showSupabaseHintIfNeeded();
   initGoogleReviewLink();
   initBookingScrollAndHighlight();
+  initGoogleTranslateBarHider();
 });
+
+function initGoogleTranslateBarHider() {
+  function hideBar() {
+    document.body.style.top = '0';
+    document.body.style.marginTop = '0';
+    document.body.style.paddingTop = '0';
+    document.querySelectorAll('iframe.goog-te-banner-frame, .goog-te-banner-frame').forEach(el => {
+      if (!el.closest('#google_translate_element') && !el.closest('.translate-widget')) {
+        el.style.cssText = 'display:none!important;height:0!important;visibility:hidden!important';
+      }
+    });
+  }
+  hideBar();
+  const observer = new MutationObserver(hideBar);
+  observer.observe(document.body, { childList: true, subtree: true });
+  [100, 300, 500, 1000, 2000, 3000, 5000, 10000].forEach(ms => setTimeout(hideBar, ms));
+}
 
 function initBookingScrollAndHighlight() {
   const serviceField = document.getElementById('service');
