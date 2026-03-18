@@ -10,7 +10,37 @@ document.addEventListener('DOMContentLoaded', () => {
   loadReviews();
   showSupabaseHintIfNeeded();
   initGoogleReviewLink();
+  initBookingScrollAndHighlight();
 });
+
+function initBookingScrollAndHighlight() {
+  const serviceField = document.getElementById('service');
+  const bookSection = document.getElementById('book');
+  if (!serviceField || !bookSection) return;
+
+  function scrollToServiceAndHighlight() {
+    bookSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setTimeout(() => {
+      serviceField.closest('.form-row').scrollIntoView({ behavior: 'smooth', block: 'center' });
+      serviceField.closest('.form-row').classList.add('highlight-service');
+      setTimeout(() => serviceField.closest('.form-row').classList.remove('highlight-service'), 2000);
+    }, 300);
+  }
+
+  if (window.location.hash === '#book') scrollToServiceAndHighlight();
+
+  document.querySelectorAll('a[href="#book"]').forEach((link) => {
+    link.addEventListener('click', (e) => {
+      e.preventDefault();
+      window.location.hash = 'book';
+      scrollToServiceAndHighlight();
+    });
+  });
+
+  window.addEventListener('hashchange', () => {
+    if (window.location.hash === '#book') scrollToServiceAndHighlight();
+  });
+}
 
 function initGoogleReviewLink() {
   const link = document.getElementById('google-review-link');
