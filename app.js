@@ -159,7 +159,9 @@ function initBookingForm() {
       }, 100);
     }
   }, true);
-  form.addEventListener('submit', () => { firstInvalidHandled = false; });
+  form.querySelector('button[type="submit"]')?.addEventListener('click', () => {
+    firstInvalidHandled = false;
+  });
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
