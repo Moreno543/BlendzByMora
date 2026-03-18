@@ -144,13 +144,18 @@ function initBookingForm() {
   const status = document.getElementById('booking-status');
   if (!form || !status) return;
 
-  // On mobile: scroll to first invalid field when validation fails
+  // On mobile: scroll to first invalid field and highlight when validation fails
   let firstInvalidHandled = false;
   form.addEventListener('invalid', (e) => {
     if (!firstInvalidHandled) {
       firstInvalidHandled = true;
+      const formRow = e.target.closest('.form-row');
       setTimeout(() => {
         e.target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        if (formRow) {
+          formRow.classList.add('highlight-service');
+          setTimeout(() => formRow.classList.remove('highlight-service'), 2000);
+        }
       }, 100);
     }
   }, true);
