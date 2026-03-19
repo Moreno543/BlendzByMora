@@ -3,11 +3,19 @@
  */
 
 document.addEventListener('DOMContentLoaded', () => {
+  const stored = sessionStorage.getItem('booking-service');
   if (window.location.hash === '#book') {
-    window.scrollTo(0, 0);
-    history.replaceState(null, '', window.location.pathname + window.location.search);
+    if (stored) {
+      const sel = document.getElementById('service');
+      if (sel) sel.value = stored;
+      sessionStorage.removeItem('booking-service');
+    } else {
+      window.scrollTo(0, 0);
+      history.replaceState(null, '', window.location.pathname + window.location.search);
+    }
   }
   initMobileMenu();
+  initNavScroll();
   initDatePicker();
   initBookingForm();
   initTravelNotes();
@@ -19,18 +27,21 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function initServiceBookButtons() {
+  const header = document.querySelector('.header');
+  const headerOffset = () => (header ? header.offsetHeight : 80);
+
   document.querySelectorAll('.btn-service[data-service]').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.preventDefault();
       const serviceValue = btn.getAttribute('data-service');
       const serviceSelect = document.getElementById('service');
       const bookSection = document.getElementById('book');
-      if (serviceSelect && serviceValue) {
-        serviceSelect.value = serviceValue;
-      }
-      window.location.hash = 'book';
+
       if (bookSection) {
-        bookSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        if (serviceSelect && serviceValue) serviceSelect.value = serviceValue;
+        window.location.hash = 'book';
+        const y = bookSection.getBoundingClientRect().top + window.scrollY - headerOffset();
+        window.scrollTo({ top: y, behavior: 'smooth' });
         const formRow = serviceSelect?.closest('.form-row');
         if (formRow) {
           setTimeout(() => {
@@ -39,6 +50,9 @@ function initServiceBookButtons() {
             setTimeout(() => formRow.classList.remove('highlight-service'), 2000);
           }, 300);
         }
+      } else {
+        if (serviceValue) sessionStorage.setItem('booking-service', serviceValue);
+        window.location.href = 'index.html#book';
       }
     });
   });
@@ -49,27 +63,31 @@ function initBookingScrollAndHighlight() {
   const bookSection = document.getElementById('book');
   if (!serviceField || !bookSection) return;
 
-  function scrollToServiceAndHighlight() {
-    bookSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    setTimeout(() => {
-      serviceField.closest('.form-row').scrollIntoView({ behavior: 'smooth', block: 'center' });
-      serviceField.closest('.form-row').classList.add('highlight-service');
-      setTimeout(() => serviceField.closest('.form-row').classList.remove('highlight-service'), 2000);
-    }, 300);
+  const header = document.querySelector('.header');
+  const headerOffset = () => (header ? header.offsetHeight : 80);
+
+  function scrollToBookSection() {
+    const y = bookSection.getBoundingClientRect().top + window.scrollY - headerOffset();
+    window.scrollTo({ top: y, behavior: 'smooth' });
   }
 
-  if (window.location.hash === '#book') scrollToServiceAndHighlight();
+  if (window.location.hash === '#book') scrollToBookSection();
 
   document.querySelectorAll('a[href="#book"]:not([data-service])').forEach((link) => {
     link.addEventListener('click', (e) => {
       e.preventDefault();
-      window.location.hash = 'book';
-      scrollToServiceAndHighlight();
+      const nav = document.querySelector('.nav');
+      if (nav) nav.classList.remove('open');
+
+      requestAnimationFrame(() => {
+        scrollToBookSection();
+      });
+      history.pushState(null, '', '#book');
     });
   });
 
   window.addEventListener('hashchange', () => {
-    if (window.location.hash === '#book') scrollToServiceAndHighlight();
+    if (window.location.hash === '#book') scrollToBookSection();
   });
 }
 
@@ -91,6 +109,33 @@ function initMobileMenu() {
   if (btn && nav) {
     btn.addEventListener('click', () => nav.classList.toggle('open'));
   }
+}
+
+// Nav scroll: ensure sections land at top (below fixed header) on mobile and desktop
+function initNavScroll() {
+  const header = document.querySelector('.header');
+  const headerOffset = () => (header ? header.offsetHeight : 80);
+
+  document.querySelectorAll('a[href^="#"]').forEach((link) => {
+    const href = link.getAttribute('href');
+    if (href === '#') return;
+    const targetId = href.slice(1);
+    if (targetId === 'book') return; // handled by initBookingScrollAndHighlight
+    const target = document.getElementById(targetId);
+    if (!target) return;
+
+    link.addEventListener('click', (e) => {
+      e.preventDefault();
+      const nav = document.querySelector('.nav');
+      if (nav) nav.classList.remove('open');
+
+      requestAnimationFrame(() => {
+        const y = target.getBoundingClientRect().top + window.scrollY - headerOffset();
+        window.scrollTo({ top: y, behavior: 'smooth' });
+      });
+      history.pushState(null, '', href);
+    });
+  });
 }
 
 // Date picker: visible calendar, Mon-Sat only, min = today

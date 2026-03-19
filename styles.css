@@ -19,6 +19,7 @@
 
 html {
   scroll-behavior: smooth;
+  scroll-padding-top: 100px;
 }
 
 body {
@@ -102,6 +103,10 @@ body {
 .nav-book:hover {
   background: var(--color-accent);
   color: var(--color-bg) !important;
+}
+
+.nav-current {
+  color: var(--color-text) !important;
 }
 
 .mobile-menu-btn {
@@ -197,6 +202,104 @@ section h2 {
 /* Services */
 .services {
   background: var(--color-bg-alt);
+}
+
+.services-page .services {
+  padding-top: 6rem;
+}
+
+.bucket-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 2rem;
+}
+
+.bucket-card {
+  background: var(--color-bg);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 2.5rem;
+  transition: border-color 0.2s;
+}
+
+.bucket-card:hover {
+  border-color: rgba(201, 169, 98, 0.3);
+}
+
+.bucket-link {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+.bucket-summary-text {
+  color: var(--color-text-muted);
+  font-size: 0.95rem;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.bucket-title {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: var(--color-accent);
+  margin-bottom: 1.5rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.bucket-services {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.bucket-service h4 {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: 0.5rem;
+}
+
+.bucket-service p {
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.services-detail {
+  margin-top: 4rem;
+  padding-top: 2rem;
+  scroll-margin-top: 100px;
+}
+
+.detail-title {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: var(--color-accent);
+  margin-bottom: 1.5rem;
+}
+
+.back-to-services {
+  margin-top: 2.5rem;
+  text-align: center;
+}
+
+.back-to-services a {
+  color: var(--color-text-muted);
+  text-decoration: none;
+  font-size: 0.9rem;
+  transition: color 0.2s;
+}
+
+.back-to-services a:hover {
+  color: var(--color-accent);
 }
 
 .services-grid {
