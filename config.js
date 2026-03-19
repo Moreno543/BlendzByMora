@@ -44,8 +44,8 @@ const CONFIG = {
   FORMSPREE_BOOKING_ID: 'xvzwvlyr',  // formspree.io/f/xvzwvlyr
   FORMSPREE_REVIEW_ID: '',   // Optional: for review form submissions
 
-  // Google review link (used when GOOGLE_PLACE_ID is not set)
-  GOOGLE_REVIEW_URL: 'https://www.google.com/search?q=BlendzByMora&stick=H4sIAAAAAAAA_-NgU1I1qEhMSzUzNzW2tLBMSUlLszS3MqhINTEzNEtJS04xNzA0MTKyWMTK45STmpdS5VTpm1-UCADuQv8zOAAAAA&hl=en',
+  // Google review link - direct link for customers to leave a review
+  GOOGLE_REVIEW_URL: 'https://g.page/r/CShCAdf8bWHkEBM/review',
   // Or use Place ID for direct writereview link: https://developers.google.com/maps/documentation/places/web-service/place-id
   GOOGLE_PLACE_ID: '',
 

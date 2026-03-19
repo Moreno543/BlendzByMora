@@ -3,33 +3,45 @@
  */
 
 document.addEventListener('DOMContentLoaded', () => {
+  if (window.location.hash === '#book') {
+    window.scrollTo(0, 0);
+    history.replaceState(null, '', window.location.pathname + window.location.search);
+  }
   initMobileMenu();
   initDatePicker();
   initBookingForm();
   initTravelNotes();
   initReviewForm();
   loadReviews();
-  showSupabaseHintIfNeeded();
   initGoogleReviewLink();
   initBookingScrollAndHighlight();
-  initGoogleTranslateBarHider();
+  initServiceBookButtons();
 });
 
-function initGoogleTranslateBarHider() {
-  function hideBar() {
-    document.body.style.top = '0';
-    document.body.style.marginTop = '0';
-    document.body.style.paddingTop = '0';
-    document.querySelectorAll('iframe.goog-te-banner-frame, .goog-te-banner-frame').forEach(el => {
-      if (!el.closest('#google_translate_element') && !el.closest('.translate-widget')) {
-        el.style.cssText = 'display:none!important;height:0!important;visibility:hidden!important';
+function initServiceBookButtons() {
+  document.querySelectorAll('.btn-service[data-service]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const serviceValue = btn.getAttribute('data-service');
+      const serviceSelect = document.getElementById('service');
+      const bookSection = document.getElementById('book');
+      if (serviceSelect && serviceValue) {
+        serviceSelect.value = serviceValue;
+      }
+      window.location.hash = 'book';
+      if (bookSection) {
+        bookSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        const formRow = serviceSelect?.closest('.form-row');
+        if (formRow) {
+          setTimeout(() => {
+            formRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            formRow.classList.add('highlight-service');
+            setTimeout(() => formRow.classList.remove('highlight-service'), 2000);
+          }, 300);
+        }
       }
     });
-  }
-  hideBar();
-  const observer = new MutationObserver(hideBar);
-  observer.observe(document.body, { childList: true, subtree: true });
-  [100, 300, 500, 1000, 2000, 3000, 5000, 10000].forEach(ms => setTimeout(hideBar, ms));
+  });
 }
 
 function initBookingScrollAndHighlight() {
@@ -48,7 +60,7 @@ function initBookingScrollAndHighlight() {
 
   if (window.location.hash === '#book') scrollToServiceAndHighlight();
 
-  document.querySelectorAll('a[href="#book"]').forEach((link) => {
+  document.querySelectorAll('a[href="#book"]:not([data-service])').forEach((link) => {
     link.addEventListener('click', (e) => {
       e.preventDefault();
       window.location.hash = 'book';
@@ -69,13 +81,6 @@ function initGoogleReviewLink() {
   } else {
     link.href = CONFIG.GOOGLE_REVIEW_URL || 'https://www.google.com/search?q=BlendzByMora&stick=H4sIAAAAAAAA_-NgU1I1qEhMSzUzNzW2tLBMSUlLszS3MqhINTEzNEtJS04xNzA0MTKyWMTK45STmpdS5VTpm1-UCADuQv8zOAAAAA&hl=en';
     link.title = 'Leave a review for Blendz By Mora on Google';
-  }
-}
-
-function showSupabaseHintIfNeeded() {
-  const hint = document.getElementById('supabase-setup-hint');
-  if (hint && (!CONFIG.SUPABASE_URL || !CONFIG.SUPABASE_ANON_KEY)) {
-    hint.style.display = 'block';
   }
 }
 
