@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Schedule — Blendz By Mora</title>
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Montserrat:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .admin-page { min-height: 100vh; padding: 6rem 1.5rem 3rem; max-width: 1200px; margin: 0 auto; }
+    .admin-page h1 { font-family: var(--font-display); font-weight: 600; margin-bottom: 0.5rem; }
+    .admin-sub { color: var(--color-text-muted); font-size: 0.9rem; margin-bottom: 2rem; }
+    .admin-card {
+      background: var(--color-bg-alt);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px;
+      padding: 1.5rem 1.75rem;
+      margin-bottom: 1.5rem;
+    }
+    .admin-card label { display: block; font-size: 0.8rem; color: var(--color-text-muted); margin-bottom: 0.35rem; }
+    .admin-card input[type="password"],
+    .admin-card input[type="date"] {
+      width: 100%; max-width: 400px; padding: 0.75rem 1rem;
+      background: var(--color-bg); border: 1px solid rgba(255,255,255,0.15);
+      color: var(--color-text); font-family: var(--font-body); border-radius: 4px;
+    }
+    .admin-card input[type="date"] { max-width: 200px; color-scheme: dark; }
+    .admin-filter-row {
+      display: flex; flex-wrap: wrap; align-items: flex-end; gap: 1rem 1.25rem;
+      margin-bottom: 1rem;
+    }
+    .admin-filter-field label { margin-bottom: 0.35rem; }
+    .admin-presets { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.75rem; }
+    .btn-admin-small { padding: 0.4rem 0.75rem; font-size: 0.8rem; }
+    .admin-actions { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 1rem; align-items: center; }
+    .btn-admin {
+      padding: 0.65rem 1.25rem; border-radius: 4px; font-family: var(--font-body);
+      font-size: 0.9rem; cursor: pointer; border: 1px solid var(--color-accent);
+      background: transparent; color: var(--color-accent);
+    }
+    .btn-admin:hover { background: rgba(201, 169, 98, 0.12); }
+    .btn-admin-primary { background: var(--color-accent); color: #0a0a0a; border-color: var(--color-accent); font-weight: 600; }
+    .btn-admin-primary:hover { background: var(--color-accent-hover); }
+    .admin-error { color: #e8a0a0; font-size: 0.9rem; margin-top: 0.75rem; }
+    .admin-meta { color: var(--color-text-muted); font-size: 0.85rem; margin-bottom: 1rem; }
+    .admin-table-wrap { overflow-x: auto; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; }
+    .admin-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    .admin-table th, .admin-table td { padding: 0.65rem 0.75rem; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.06); vertical-align: top; }
+    .admin-table th { background: rgba(0,0,0,0.35); color: var(--color-text-muted); font-weight: 500; white-space: nowrap; }
+    .admin-table a { color: var(--color-accent); }
+    .admin-notes { max-width: 220px; word-break: break-word; }
+    .admin-empty { text-align: center; color: var(--color-text-muted); padding: 2rem !important; }
+    .admin-loading { color: var(--color-text-muted); margin-top: 1rem; }
+    .admin-back { margin-top: 2rem; }
+    .admin-back a { color: var(--color-accent); }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-content">
+      <a href="index.html" class="logo-link">
+        <img src="assets/profile.png" alt="" class="profile-pic" width="48" height="48">
+        <span class="brand-name">BLENDZ BY MORA</span>
+      </a>
+    </div>
+  </header>
+
+  <main class="admin-page">
+    <h1>Upcoming appointments</h1>
+    <p class="admin-sub">Private schedule — default shows today through next Friday (Las Vegas). Pick any date range below, or use quick presets.</p>
+
+    <section id="admin-login" class="admin-card">
+      <form id="admin-login-form">
+        <label for="admin-token">Admin token</label>
+        <input type="password" id="admin-token" name="token" autocomplete="current-password" placeholder="Paste your secret token" required>
+        <div class="admin-actions">
+          <button type="submit" class="btn-admin btn-admin-primary">View schedule</button>
+        </div>
+      </form>
+      <p id="admin-error" class="admin-error" style="display:none;"></p>
+    </section>
+
+    <section id="admin-dashboard" class="admin-dashboard" hidden>
+      <div class="admin-card">
+        <div class="admin-filter-row">
+          <div class="admin-filter-field">
+            <label for="admin-date-from">From</label>
+            <input type="date" id="admin-date-from" autocomplete="off">
+          </div>
+          <div class="admin-filter-field">
+            <label for="admin-date-to">To</label>
+            <input type="date" id="admin-date-to" autocomplete="off">
+          </div>
+          <div class="admin-actions" style="margin-top:0;">
+            <button type="button" class="btn-admin btn-admin-primary" id="admin-apply-range">Apply range</button>
+          </div>
+        </div>
+        <div class="admin-presets">
+          <button type="button" class="btn-admin btn-admin-small" id="admin-preset-default">Default week</button>
+          <button type="button" class="btn-admin btn-admin-small" id="admin-preset-14">Next 14 days</button>
+          <button type="button" class="btn-admin btn-admin-small" id="admin-preset-30">Next 30 days</button>
+        </div>
+        <p class="admin-meta" id="admin-range" style="margin-top:1rem;"></p>
+        <p class="admin-meta"><strong id="admin-count">—</strong> appointment(s) in this window.</p>
+        <div class="admin-actions">
+          <button type="button" class="btn-admin btn-admin-primary" id="admin-refresh">Refresh</button>
+          <button type="button" class="btn-admin" id="admin-logout">Sign out</button>
+        </div>
+        <p id="admin-loading" class="admin-loading" hidden>Loading…</p>
+      </div>
+      <div class="admin-table-wrap">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Time</th>
+              <th>Service</th>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Phone</th>
+              <th>Travel</th>
+              <th>Notes</th>
+            </tr>
+          </thead>
+          <tbody id="admin-tbody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <p class="admin-back"><a href="index.html">← Back to site</a></p>
+  </main>
+
+  <script src="admin.js?v=2"></script>
+</body>
+</html>

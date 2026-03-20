@@ -1,2 +1,8 @@
 .DS_Store
 node_modules/
+
+# Local Netlify folder
+.netlify
+
+# Stray lockfile (no Deno in project)
+deno.lock

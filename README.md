@@ -11,6 +11,8 @@ A professional makeup artistry website with booking and reviews.
 
 2. For **booking with double-booking prevention** and **on-site reviews**, follow the setup below.
 
+3. **Private schedule page** (`admin.html`, today → next Friday, Las Vegas dates): see **[ADMIN_DASHBOARD.md](./ADMIN_DASHBOARD.md)** (requires Netlify + serverless function + env token).
+
 ---
 
 ## Setup: Booking & Reviews (Prevents Double Bookings)
