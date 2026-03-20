@@ -582,8 +582,19 @@ function initBookingForm() {
       // 2. Send to Formspree (email to you + CC copy to customer — same details as your notification)
       if (hasFormspree) {
         const formData = new FormData();
+        const firstName = (payload.name || '').trim().split(/\s+/)[0] || 'there';
+        const confirmationCopy =
+          `Hello ${firstName},\n\n` +
+          'Thank you for submitting an appointment request with Blendz By Mora. Below is a copy of the services you requested for your records.\n\n' +
+          'Our team will review your request and follow up shortly to confirm your appointment by email or phone.\n\n' +
+          'Kind regards,\nBlendz By Mora';
+        // Shown first in Formspree emails (you + customer CC) — reads as a professional cover note above the fields
+        formData.append('Appointment confirmation', confirmationCopy);
         Object.entries(payload).forEach(([k, v]) => formData.append(k, v));
-        formData.append('_subject', `New Booking: ${payload.service} on ${payload.date} at ${payload.time}`);
+        formData.append(
+          '_subject',
+          `Blendz By Mora — appointment request received (${payload.date} · ${payload.time})`
+        );
         if (payload.email && payload.email.trim()) {
           formData.append('_cc', payload.email.trim());
         }
