@@ -23,6 +23,38 @@
   const preset14 = document.getElementById('admin-preset-14');
   const preset30 = document.getElementById('admin-preset-30');
 
+  /** Same order as netlify/functions/admin-bookings.mjs — earliest date/time first. */
+  const SLOT_ORDER = ['8:00 AM', '10:00 AM', '12:00 PM', '2:00 PM', '4:00 PM'];
+
+  function sortDateKey(row) {
+    const s = String(row?.date ?? '');
+    return /^\d{4}-\d{2}-\d{2}/.test(s) ? s.slice(0, 10) : s;
+  }
+
+  function slotRank(time) {
+    const t = String(time ?? '')
+      .trim()
+      .replace(/\s+/g, ' ')
+      .toLowerCase();
+    if (!t) return 999;
+    const idx = SLOT_ORDER.findIndex((slot) => slot.toLowerCase() === t);
+    return idx === -1 ? 999 : idx;
+  }
+
+  function sortBookingsLocal(rows) {
+    return [...(rows || [])].sort((a, b) => {
+      const dc = sortDateKey(a).localeCompare(sortDateKey(b));
+      if (dc !== 0) return dc;
+      const tr = slotRank(a.time) - slotRank(b.time);
+      if (tr !== 0) return tr;
+      const tc = String(a.time || '').localeCompare(String(b.time || ''), undefined, {
+        numeric: true,
+      });
+      if (tc !== 0) return tc;
+      return String(a.id || '').localeCompare(String(b.id || ''));
+    });
+  }
+
   function showError(msg) {
     errEl.textContent = msg || '';
     errEl.style.display = msg ? 'block' : 'none';
@@ -50,6 +82,24 @@
     const dt = new Date(y, mo - 1, d);
     dt.setDate(dt.getDate() + deltaDays);
     return localYmd(dt);
+  }
+
+  /** Netlify cold starts + DB can exceed edge timeout; retry without invalid netlify.toml syntax. */
+  async function fetchBookingsWithRetry(body) {
+    const opts = {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify(body),
+    };
+    const delays = [0, 1200, 2800];
+    let lastRes = null;
+    for (let i = 0; i < delays.length; i++) {
+      if (delays[i] > 0) await new Promise((r) => setTimeout(r, delays[i]));
+      lastRes = await fetch(fnPath, opts);
+      if (lastRes.ok || lastRes.status === 401 || lastRes.status === 400) break;
+      if (lastRes.status !== 502 && lastRes.status !== 504) break;
+    }
+    return lastRes;
   }
 
   /** Empty both → default week on server; both filled → custom range; one only → invalid. */
@@ -90,11 +140,7 @@
     const body = { token, ...rangeCheck.extra };
 
     try {
-      const res = await fetch(fnPath, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify(body),
-      });
+      const res = await fetchBookingsWithRetry(body);
       const data = await res.json().catch(() => ({}));
 
       if (res.status === 401) {
@@ -106,7 +152,12 @@
       }
 
       if (!res.ok) {
-        showError(data.error || `Could not load appointments (${res.status}).`);
+        const base = data.error || `Could not load appointments (${res.status}).`;
+        const extra =
+          res.status === 504 || res.status === 502
+            ? ' The server timed out (common right after idle). Tap Refresh or try again in a moment.'
+            : '';
+        showError(base + extra);
         return;
       }
 
@@ -117,10 +168,10 @@
       rangeEl.textContent = data.range?.label || '';
       countEl.textContent = data.count != null ? String(data.count) : '—';
 
-      const rows = data.bookings || [];
+      const rows = sortBookingsLocal(data.bookings || []);
       if (rows.length === 0) {
         tbody.innerHTML =
-          '<tr><td colspan="8" class="admin-empty">No appointments in this date range.</td></tr>';
+          '<tr><td colspan="8" class="admin-empty" data-label="">No appointments in this date range.</td></tr>';
         return;
       }
 
@@ -131,14 +182,14 @@
         lastDate = dateStr;
         const tr = document.createElement('tr');
         tr.innerHTML = `
-          <td>${showDate ? escapeHtml(dateStr) : ''}</td>
-          <td>${escapeHtml(r.time || '')}</td>
-          <td>${escapeHtml(r.service || '')}</td>
-          <td>${escapeHtml(r.name || '')}</td>
-          <td><a href="mailto:${escapeAttr(r.email)}">${escapeHtml(r.email || '')}</a></td>
-          <td><a href="tel:${escapeAttr(String(r.phone || '').replace(/\D/g, ''))}">${escapeHtml(r.phone || '')}</a></td>
-          <td>${escapeHtml(r.travel || '')}</td>
-          <td class="admin-notes">${escapeHtml(r.notes || '')}</td>
+          <td data-label="Date" class="admin-nowrap">${cell(showDate ? dateStr : '')}</td>
+          <td data-label="Time" class="admin-nowrap">${cell(r.time || '')}</td>
+          <td data-label="Service">${cell(r.service || '')}</td>
+          <td data-label="Name">${cell(r.name || '')}</td>
+          <td data-label="Email">${emailCell(r.email)}</td>
+          <td data-label="Phone">${phoneCell(r.phone)}</td>
+          <td data-label="Travel" class="admin-nowrap">${cell(r.travel || '')}</td>
+          <td data-label="Notes" class="admin-notes admin-td-notes">${notesCell(r.notes)}</td>
         `;
         tbody.appendChild(tr);
       }
@@ -150,6 +201,30 @@
     } finally {
       loadingEl.hidden = true;
     }
+  }
+
+  /** Plain text in a span for mobile nowrap / layout. */
+  function cell(text) {
+    const t = escapeHtml(text);
+    return t ? `<span class="admin-cell-value">${t}</span>` : '';
+  }
+
+  function emailCell(email) {
+    if (!email) return '';
+    const e = escapeHtml(email);
+    return `<span class="admin-cell-value"><a href="mailto:${escapeAttr(email)}">${e}</a></span>`;
+  }
+
+  function phoneCell(phone) {
+    if (!phone) return '';
+    const digits = String(phone).replace(/\D/g, '');
+    const display = escapeHtml(phone);
+    return `<span class="admin-cell-value"><a href="tel:${escapeAttr(digits)}">${display}</a></span>`;
+  }
+
+  function notesCell(notes) {
+    const t = escapeHtml(notes || '');
+    return t ? `<span class="admin-cell-value">${t}</span>` : '';
   }
 
   function escapeHtml(s) {

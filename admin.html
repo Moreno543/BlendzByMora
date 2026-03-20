@@ -46,13 +46,71 @@
     .btn-admin-primary:hover { background: var(--color-accent-hover); }
     .admin-error { color: #e8a0a0; font-size: 0.9rem; margin-top: 0.75rem; }
     .admin-meta { color: var(--color-text-muted); font-size: 0.85rem; margin-bottom: 1rem; }
-    .admin-table-wrap { overflow-x: auto; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; }
+    .admin-table-wrap { overflow-x: auto; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; -webkit-overflow-scrolling: touch; }
     .admin-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
     .admin-table th, .admin-table td { padding: 0.65rem 0.75rem; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.06); vertical-align: top; }
     .admin-table th { background: rgba(0,0,0,0.35); color: var(--color-text-muted); font-weight: 500; white-space: nowrap; }
-    .admin-table a { color: var(--color-accent); }
+    .admin-table a { color: var(--color-accent); word-break: break-all; }
     .admin-notes { max-width: 220px; word-break: break-word; }
+    .admin-cell-value { display: block; min-width: 0; }
+    .admin-nowrap .admin-cell-value { white-space: nowrap; }
     .admin-empty { text-align: center; color: var(--color-text-muted); padding: 2rem !important; }
+    /* Phones / narrow screens: one card per appointment, full width, readable */
+    @media (max-width: 768px) {
+      .admin-page { padding: 5rem 1rem 2rem; }
+      .admin-page h1 { font-size: 1.6rem; }
+      .admin-table-wrap {
+        overflow-x: visible;
+        border: none;
+        background: transparent;
+      }
+      .admin-table { border-collapse: separate; border-spacing: 0 0.85rem; }
+      .admin-table thead { display: none; }
+      .admin-table tbody { display: block; }
+      .admin-table tbody tr {
+        display: block;
+        border: 1px solid rgba(255,255,255,0.12);
+        border-radius: 12px;
+        padding: 0.75rem 1rem 0.9rem;
+        background: var(--color-bg-alt);
+      }
+      .admin-table tbody td {
+        display: grid;
+        grid-template-columns: minmax(5.25rem, 32%) 1fr;
+        gap: 0.2rem 0.75rem;
+        align-items: start;
+        padding: 0.42rem 0;
+        border: none;
+        font-size: 0.9rem;
+      }
+      .admin-table tbody td::before {
+        content: attr(data-label);
+        color: var(--color-text-muted);
+        font-size: 0.68rem;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        font-weight: 600;
+        line-height: 1.35;
+        padding-top: 0.12rem;
+      }
+      .admin-table tbody td.admin-td-notes {
+        grid-template-columns: 1fr;
+        padding-top: 0.65rem;
+        margin-top: 0.2rem;
+        border-top: 1px solid rgba(255,255,255,0.08);
+      }
+      .admin-table tbody td.admin-td-notes::before { margin-bottom: 0.2rem; }
+      .admin-notes { max-width: none; word-break: break-word; }
+      .admin-table tbody td.admin-empty {
+        display: block;
+        text-align: center;
+        padding: 2rem 1rem !important;
+      }
+      .admin-table tbody td.admin-empty::before {
+        display: none;
+        content: none;
+      }
+    }
     .admin-loading { color: var(--color-text-muted); margin-top: 1rem; }
     .admin-back { margin-top: 2rem; }
     .admin-back a { color: var(--color-accent); }
@@ -71,6 +129,7 @@
   <main class="admin-page">
     <h1>Upcoming appointments</h1>
     <p class="admin-sub">Private schedule — default shows today through next Friday (Las Vegas). Pick any date range below, or use quick presets.</p>
+    <p id="admin-error" class="admin-error" style="display:none;"></p>
 
     <section id="admin-login" class="admin-card">
       <form id="admin-login-form">
@@ -80,7 +139,6 @@
           <button type="submit" class="btn-admin btn-admin-primary">View schedule</button>
         </div>
       </form>
-      <p id="admin-error" class="admin-error" style="display:none;"></p>
     </section>
 
     <section id="admin-dashboard" class="admin-dashboard" hidden>
@@ -133,6 +191,6 @@
     <p class="admin-back"><a href="index.html">← Back to site</a></p>
   </main>
 
-  <script src="admin.js?v=2"></script>
+  <script src="admin.js?v=7"></script>
 </body>
 </html>

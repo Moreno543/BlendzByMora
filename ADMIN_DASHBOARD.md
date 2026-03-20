@@ -60,6 +60,16 @@ Open the URL Netlify prints (often `http://localhost:8888`) and go to **`/admin.
 
 ---
 
+## “Could not load appointments (504)” on the live site
+
+A **504** means Netlify’s edge gave up waiting for the function (often **~10 seconds** on the Free plan), usually after the function was **idle** (“cold start”) plus time to reach Supabase.
+
+**What we do in code:** the admin page **retries** a few times on 502/504, and the function requests only the columns it needs (smaller/faster response).
+
+**If it still happens:** In Netlify → your site → **Project configuration** → **Functions**, increase the **function timeout** if your plan allows (Pro and up). You can also trigger a fresh deploy (**Deploys → Trigger deploy**) so the latest function bundle is live.
+
+---
+
 ## Security notes
 
 - Anyone who knows **`/admin.html`** + your **`ADMIN_DASHBOARD_TOKEN`** can read bookings in ranges you query. Use a **strong token** and don’t share it.

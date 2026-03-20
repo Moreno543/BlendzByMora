@@ -10,14 +10,38 @@ const SLOT_ORDER = ['8:00 AM', '10:00 AM', '12:00 PM', '2:00 PM', '4:00 PM'];
 const YMD_RE = /^\d{4}-\d{2}-\d{2}$/;
 const MAX_RANGE_DAYS = 120;
 
+/** Calendar date for sort (YYYY-MM-DD from DATE or ISO string). */
+function sortDateKey(row) {
+  const d = row?.date;
+  if (d == null) return '';
+  const s = String(d);
+  return /^\d{4}-\d{2}-\d{2}/.test(s) ? s.slice(0, 10) : s;
+}
+
+/** Map time string to morning slot order (case/spacing tolerant). */
+function slotRank(time) {
+  const t = String(time ?? '')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .toLowerCase();
+  if (!t) return 999;
+  const idx = SLOT_ORDER.findIndex((slot) => slot.toLowerCase() === t);
+  return idx === -1 ? 999 : idx;
+}
+
+/** Earliest → latest by appointment date, then time of day (not booking created order). */
 function sortBookings(rows) {
-  const rank = (t) => {
-    const i = SLOT_ORDER.indexOf(t);
-    return i === -1 ? 99 : i;
-  };
-  return [...(rows || [])].sort(
-    (a, b) => String(a.date).localeCompare(String(b.date)) || rank(a.time) - rank(b.time)
-  );
+  return [...(rows || [])].sort((a, b) => {
+    const dc = sortDateKey(a).localeCompare(sortDateKey(b));
+    if (dc !== 0) return dc;
+    const tr = slotRank(a.time) - slotRank(b.time);
+    if (tr !== 0) return tr;
+    const tc = String(a.time || '').localeCompare(String(b.time || ''), undefined, {
+      numeric: true,
+    });
+    if (tc !== 0) return tc;
+    return String(a.id || '').localeCompare(String(b.id || ''));
+  });
 }
 
 function daysInclusive(start, end) {
@@ -109,13 +133,16 @@ export default async function handler(request) {
     });
   }
 
-  const supabase = createClient(url, key);
+  const supabase = createClient(url, key, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
   const { data, error } = await supabase
     .from('bookings')
-    .select('*')
+    .select('id, date, time, service, name, email, phone, travel, notes, created_at')
     .gte('date', start)
     .lte('date', end)
-    .order('date', { ascending: true });
+    .order('date', { ascending: true })
+    .order('time', { ascending: true });
 
   if (error) {
     return new Response(JSON.stringify({ error: error.message }), {
