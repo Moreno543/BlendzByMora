@@ -141,41 +141,297 @@ function initNavScroll() {
 // Date picker: visible calendar, Mon-Sat only, min = today
 let flatpickrInstance = null;
 
+const BOOKING_TIME_SLOTS = ['8:00 AM', '10:00 AM', '12:00 PM', '2:00 PM', '4:00 PM'];
+
+/** Bumps when date cleared / new request — stale async Supabase responses must not repaint the time list */
+let updateTimeSlotsSeq = 0;
+
+function getBookingTimezone() {
+  try {
+    const tz = typeof CONFIG !== 'undefined' && CONFIG.BOOKING_TIMEZONE;
+    return tz && String(tz).trim() ? String(tz).trim() : 'America/Los_Angeles';
+  } catch (_) {
+    return 'America/Los_Angeles';
+  }
+}
+
+/** YYYY-MM-DD for "today" in BOOKING_TIMEZONE (must match slot logic; not device local date). */
+function bookingZoneTodayStr() {
+  try {
+    const p = zonedWallClockParts(Date.now(), getBookingTimezone());
+    if (!p || [p.y, p.mo, p.d].some((n) => Number.isNaN(n))) {
+      return calendarDateStr(new Date());
+    }
+    return `${p.y}-${String(p.mo).padStart(2, '0')}-${String(p.d).padStart(2, '0')}`;
+  } catch (_) {
+    return calendarDateStr(new Date());
+  }
+}
+
+/** Keep Flatpickr minDate aligned with Vegas calendar (fixes Chrome vs Safari / preview vs device). */
+function syncFlatpickrMinDateToBookingZone() {
+  if (!flatpickrInstance) return;
+  try {
+    flatpickrInstance.set('minDate', bookingZoneTodayStr());
+  } catch (_) {}
+}
+
+/** Calendar parts for an instant in a given IANA zone (for slot math) */
+function zonedWallClockParts(utcMs, timeZone) {
+  const fmt = new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+    hourCycle: 'h23',
+  });
+  const parts = {};
+  fmt.formatToParts(new Date(utcMs)).forEach((x) => {
+    if (x.type !== 'literal') parts[x.type] = x.value;
+  });
+  return {
+    y: parseInt(parts.year, 10),
+    mo: parseInt(parts.month, 10),
+    d: parseInt(parts.day, 10),
+    h: parseInt(parts.hour, 10),
+    min: parseInt(parts.minute, 10),
+  };
+}
+
+/**
+ * UTC epoch ms for when the wall clock reads (Y-M-D, hour24:minute) in `timeZone`.
+ */
+function utcMsForZonedWallClock(dateStr, hour24, minute, timeZone) {
+  const norm = normalizeDateStr(dateStr);
+  const [y, mo, d] = norm.split('-').map(Number);
+  if (!norm || [y, mo, d].some((n) => Number.isNaN(n))) return NaN;
+  const key = (yy, m, dd, hh, mm) => yy * 1e8 + m * 1e6 + dd * 1e4 + hh * 100 + mm;
+  const target = key(y, mo, d, hour24, minute);
+  let lo = Date.UTC(y, mo - 1, d, 0, 0, 0) - 14 * 3600000;
+  let hi = Date.UTC(y, mo - 1, d, 23, 59, 59) + 14 * 3600000;
+  for (let i = 0; i < 80; i++) {
+    const mid = (lo + hi) / 2;
+    const p = zonedWallClockParts(mid, timeZone);
+    const cur = key(p.y, p.mo, p.d, p.h, p.min);
+    if (cur === target) return Math.floor(mid);
+    if (cur < target) lo = mid;
+    else hi = mid;
+  }
+  return NaN;
+}
+
+function parseTimeLabelToHour24Minute(timeLabel) {
+  const m = timeLabel.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+  if (!m) return null;
+  let h = parseInt(m[1], 10);
+  const min = parseInt(m[2], 10);
+  const ap = m[3].toUpperCase();
+  if (ap === 'PM' && h !== 12) h += 12;
+  if (ap === 'AM' && h === 12) h = 0;
+  return { h, min };
+}
+
+/** Instant (UTC) when appointment slot starts — uses BOOKING_TIMEZONE (Las Vegas) */
+function parseSlotDateTime(dateStr, timeLabel) {
+  const norm = normalizeDateStr(dateStr);
+  if (!norm) return new Date(NaN);
+  const hm = parseTimeLabelToHour24Minute(timeLabel);
+  if (!hm) return new Date(NaN);
+  const tz = getBookingTimezone();
+  try {
+    const ms = utcMsForZonedWallClock(norm, hm.h, hm.min, tz);
+    if (Number.isNaN(ms)) return new Date(NaN);
+    return new Date(ms);
+  } catch (err) {
+    console.warn('BOOKING_TIMEZONE parse failed, using device local time:', err);
+    const parts = norm.split('-').map(Number);
+    if (parts.length !== 3 || parts.some((n) => Number.isNaN(n))) return new Date(NaN);
+    const [y, mo, d] = parts;
+    return new Date(y, mo - 1, d, hm.h, hm.min, 0, 0);
+  }
+}
+
+function clearSelectionIfDayFullyClosed() {
+  if (!flatpickrInstance) return;
+  const dateInput = document.getElementById('date');
+  if (!dateInput) return;
+  const raw = flatpickrInstance.input.value || dateInput.value;
+  const ds = normalizeDateStr(raw);
+  if (!ds || dayHasAnyBookableSlot(ds)) return;
+  flatpickrInstance.clear();
+  updateTimeSlots('');
+}
+
 function initDatePicker() {
   const dateInput = document.getElementById('date');
   if (!dateInput) return;
+
+  const timeSelect = document.getElementById('time');
+  if (timeSelect) {
+    timeSelect.innerHTML = '<option value="">Select a date first</option>';
+  }
 
   const blackoutSet = new Set(CONFIG.BLACKOUT_DATES || []);
   const range = CONFIG.BLACKOUT_RANGE;
   const blockWeekdays = new Set(range?.blockWeekdays || []);
 
+  function flatpickrDateStr(selectedDates, dateStr) {
+    if (dateStr && typeof dateStr === 'string') return normalizeDateStr(dateStr);
+    if (selectedDates && selectedDates[0]) return calendarDateStr(selectedDates[0]);
+    return '';
+  }
+
+  function flatpickrCellDateStr(date) {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+
   flatpickrInstance = flatpickr(dateInput, {
     dateFormat: 'Y-m-d',
-    minDate: 'today',
+    minDate: bookingZoneTodayStr(),
     disable: [
-      function(date) {
-        const y = date.getFullYear(), m = String(date.getMonth() + 1).padStart(2, '0'), d = String(date.getDate()).padStart(2, '0');
-        const dateStr = `${y}-${m}-${d}`;
-        if (blackoutSet.has(dateStr)) return true;
-        if (range?.start && range?.end && blockWeekdays.size) {
-          if (dateStr >= range.start && dateStr <= range.end && blockWeekdays.has(date.getDay())) return true;
+      function (date) {
+        try {
+          const dateStr = flatpickrCellDateStr(date);
+          if (blackoutSet.has(dateStr)) return true;
+          if (range?.start && range?.end && blockWeekdays.size) {
+            if (dateStr >= range.start && dateStr <= range.end && blockWeekdays.has(date.getDay())) return true;
+          }
+          const vegasToday = bookingZoneTodayStr();
+          if (dateStr < vegasToday) return true;
+          // Any calendar day with zero bookable slots (past times, or after ~3pm for last 4pm slot + 1hr rule)
+          if (!dayHasAnyBookableSlot(dateStr)) return true;
+          return false;
+        } catch (err) {
+          console.warn('Date disable check failed:', err);
+          return true;
         }
-        return false;
-      }
+      },
     ],
-    onChange: function(selectedDates, dateStr) {
-      if (dateStr) updateTimeSlots(dateStr);
-    }
+    onChange: function (selectedDates, dateStr) {
+      const ds = flatpickrDateStr(selectedDates, dateStr);
+      updateTimeSlots(ds || '');
+    },
+    onClose: function (selectedDates, dateStr) {
+      const ds = flatpickrDateStr(selectedDates, dateStr);
+      updateTimeSlots(ds || '');
+    },
+    onOpen: function () {
+      syncFlatpickrMinDateToBookingZone();
+      try {
+        flatpickrInstance.redraw();
+      } catch (_) {}
+      clearSelectionIfDayFullyClosed();
+    },
+    onMonthChange: function () {
+      try {
+        flatpickrInstance.redraw();
+      } catch (_) {}
+    },
+    onYearChange: function () {
+      try {
+        flatpickrInstance.redraw();
+      } catch (_) {}
+    },
+    onReady: function (selectedDates, dateStr) {
+      syncFlatpickrMinDateToBookingZone();
+      const ds = flatpickrDateStr(selectedDates, dateStr);
+      updateTimeSlots(ds || '');
+    },
+  });
+
+  // If flatpickr hooks miss (some browsers), sync when the date field value changes
+  dateInput.addEventListener('change', () => {
+    const v = normalizeDateStr(dateInput.value);
+    if (v) updateTimeSlots(v);
+  });
+  dateInput.addEventListener('input', () => {
+    const v = normalizeDateStr(dateInput.value);
+    if (v) updateTimeSlots(v);
+  });
+
+  // Refresh times + calendar disable state (e.g. crossing 3:01pm closes same-day booking)
+  setInterval(() => {
+    if (!flatpickrInstance) return;
+    syncFlatpickrMinDateToBookingZone();
+    const el = document.getElementById('date');
+    const raw = flatpickrInstance.input.value || el?.value;
+    const ds = normalizeDateStr(raw);
+    if (ds) updateTimeSlots(ds);
+    clearSelectionIfDayFullyClosed();
+    try {
+      flatpickrInstance.redraw();
+    } catch (_) {}
+  }, 30000);
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible') return;
+    syncFlatpickrMinDateToBookingZone();
+    const raw = flatpickrInstance?.input?.value || dateInput.value;
+    const ds = normalizeDateStr(raw);
+    if (ds) updateTimeSlots(ds);
+    clearSelectionIfDayFullyClosed();
+    try {
+      flatpickrInstance?.redraw();
+    } catch (_) {}
   });
 }
 
-// Fetch booked slots and update time dropdown
+/** YYYY-MM-DD in local timezone */
+function calendarDateStr(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+/** Flatpickr / input may return 2026-3-19 vs 2026-03-19 — must match for "is today" */
+function normalizeDateStr(str) {
+  if (!str || typeof str !== 'string') return '';
+  const m = str.trim().match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (!m) return str.trim();
+  return `${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}`;
+}
+
+/** At least one slot on this calendar date is still bookable (>=1 hr from now, Vegas-local times) */
+function dayHasAnyBookableSlot(dateStr) {
+  const norm = normalizeDateStr(dateStr);
+  return BOOKING_TIME_SLOTS.some((t) => slotHasOneHourLead(norm, t));
+}
+
+/** True if slot starts at least 1 hour from now (any date — past slots fail automatically) */
+function slotHasOneHourLead(dateStr, timeLabel) {
+  const slot = parseSlotDateTime(dateStr, timeLabel);
+  if (Number.isNaN(slot.getTime())) return false;
+  return slot.getTime() - Date.now() >= 60 * 60 * 1000;
+}
+
+// Fetch booked slots; disable past slots and slots <1 hr away (last slot 4pm → same-day closes after ~3pm)
 async function updateTimeSlots(dateStr) {
   const timeSelect = document.getElementById('time');
-  if (!timeSelect || !dateStr) return;
+  if (!timeSelect) return;
+  if (!dateStr) {
+    updateTimeSlotsSeq++;
+    timeSelect.innerHTML = '<option value="">Select a date first</option>';
+    return;
+  }
 
-  const allSlots = ['8:00 AM', '10:00 AM', '12:00 PM', '2:00 PM', '4:00 PM'];
+  dateStr = normalizeDateStr(dateStr);
+  if (!dateStr) {
+    updateTimeSlotsSeq++;
+    timeSelect.innerHTML = '<option value="">Select a date first</option>';
+    return;
+  }
 
+  const requestId = ++updateTimeSlotsSeq;
+  const allSlots = BOOKING_TIME_SLOTS;
+
+  let booked = [];
   if (CONFIG.SUPABASE_URL && CONFIG.SUPABASE_ANON_KEY) {
     try {
       const supabaseClient = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
@@ -183,38 +439,39 @@ async function updateTimeSlots(dateStr) {
         .from('bookings')
         .select('time')
         .eq('date', dateStr);
-
-      const booked = (data || []).map((b) => b.time);
-
-      timeSelect.innerHTML = '<option value="">Select a time</option>';
-      allSlots.forEach((t) => {
-        const opt = document.createElement('option');
-        opt.value = t;
-        opt.textContent = booked.includes(t) ? t + ' — Booked' : t;
-        opt.disabled = booked.includes(t);
-        timeSelect.appendChild(opt);
-      });
-
-      if (booked.length === allSlots.length) {
-        timeSelect.innerHTML = '<option value="">No slots available this day</option>';
-      }
+      booked = (data || []).map((b) => b.time);
     } catch (err) {
       console.warn('Supabase not configured or error:', err);
-      populateAllSlots(timeSelect, allSlots);
     }
-  } else {
-    populateAllSlots(timeSelect, allSlots);
   }
-}
 
-function populateAllSlots(select, slots) {
-  select.innerHTML = '<option value="">Select a time</option>';
-  slots.forEach((t) => {
+  if (requestId !== updateTimeSlotsSeq) return;
+
+  timeSelect.innerHTML = '<option value="">Select a time</option>';
+  let anyEnabled = false;
+
+  allSlots.forEach((t) => {
+    const taken = booked.includes(t);
+    const slotOk = slotHasOneHourLead(dateStr, t);
+    const unavailable = taken || !slotOk;
+    if (!unavailable) anyEnabled = true;
+
+    const slotMs = parseSlotDateTime(dateStr, t).getTime();
+    const inPast = !Number.isNaN(slotMs) && slotMs < Date.now();
+
     const opt = document.createElement('option');
     opt.value = t;
-    opt.textContent = t;
-    select.appendChild(opt);
+    let label = t;
+    if (taken) label = `${t} — Booked`;
+    else if (!slotOk) label = inPast ? `${t} — Past` : `${t} — Need 1 hr notice`;
+    opt.textContent = label;
+    opt.disabled = unavailable;
+    timeSelect.appendChild(opt);
   });
+
+  if (!anyEnabled) {
+    timeSelect.innerHTML = '<option value="">No times available — choose another date</option>';
+  }
 }
 
 function initTravelNotes() {
@@ -280,6 +537,26 @@ function initBookingForm() {
       notes,
     };
 
+    const normDate = normalizeDateStr(payload.date);
+    if (
+      !normDate ||
+      !dayHasAnyBookableSlot(normDate) ||
+      !payload.time ||
+      !slotHasOneHourLead(normDate, payload.time)
+    ) {
+      status.className = 'booking-status error';
+      status.textContent =
+        'That date or time is no longer available. Please pick another slot (1 hour notice; last booking 4pm).';
+      status.style.display = 'block';
+      if (flatpickrInstance) {
+        try {
+          flatpickrInstance.redraw();
+        } catch (_) {}
+      }
+      updateTimeSlots(normDate || '');
+      return;
+    }
+
     status.className = 'booking-status loading';
     status.textContent = 'Submitting...';
     status.style.display = 'block';
@@ -302,11 +579,14 @@ function initBookingForm() {
         if (error) throw error;
       }
 
-      // 2. Send to Formspree (email notification)
+      // 2. Send to Formspree (email to you + CC copy to customer — same details as your notification)
       if (hasFormspree) {
         const formData = new FormData();
         Object.entries(payload).forEach(([k, v]) => formData.append(k, v));
         formData.append('_subject', `New Booking: ${payload.service} on ${payload.date} at ${payload.time}`);
+        if (payload.email && payload.email.trim()) {
+          formData.append('_cc', payload.email.trim());
+        }
         const res = await fetch(`https://formspree.io/f/${CONFIG.FORMSPREE_BOOKING_ID}`, {
           method: 'POST',
           body: formData,

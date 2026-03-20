@@ -83,12 +83,15 @@ CREATE POLICY "Allow anonymous select reviews" ON reviews
 
 5. (Optional) Create another form for **Reviews** and set `FORMSPREE_REVIEW_ID`.
 
+If your form includes **travel**, add a column: `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS travel TEXT DEFAULT 'No';`
+
 ---
 
 ## Booking Rules (Built-in)
 
 - **Hours:** 8am–6pm, Monday–Saturday
 - **Slots:** 8:00 AM, 10:00 AM, 12:00 PM, 2:00 PM, 4:00 PM (4pm is last booking)
+- **Timezone:** Slot times use `BOOKING_TIMEZONE` in `config.js` (default `America/Los_Angeles` / Las Vegas), not the visitor’s device timezone.
 - **Double booking:** Prevented when Supabase is configured
 
 ---

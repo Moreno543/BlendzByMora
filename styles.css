@@ -910,6 +910,14 @@ details[open] .faq-question::after {
   text-decoration: underline;
 }
 
+/* Flatpickr: make “no slots left today” days clearly unavailable */
+.flatpickr-day.flatpickr-disabled,
+.flatpickr-day.flatpickr-disabled:hover {
+  color: rgba(255, 255, 255, 0.22) !important;
+  background: rgba(0, 0, 0, 0.2) !important;
+  cursor: not-allowed !important;
+}
+
 /* Mobile */
 @media (max-width: 768px) {
   .nav {

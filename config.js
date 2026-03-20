@@ -49,6 +49,10 @@ const CONFIG = {
   // Or use Place ID for direct writereview link: https://developers.google.com/maps/documentation/places/web-service/place-id
   GOOGLE_PLACE_ID: '',
 
+  // Appointment times (8am / 10am / …) are interpreted in this timezone (Las Vegas).
+  // Keeps “today / past slot” logic correct even if the visitor’s device is set elsewhere.
+  BOOKING_TIMEZONE: 'America/Los_Angeles',
+
   // Blackout: Mon–Thu from May 4 – Oct 28, 2026
   BLACKOUT_RANGE: {
     start: '2026-05-04',
