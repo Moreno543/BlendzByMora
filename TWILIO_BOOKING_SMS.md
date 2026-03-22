@@ -2,6 +2,8 @@
 
 After a customer submits the booking form and the row is saved in **Supabase**, the site calls **`booking-sms`** (Netlify Function). That function loads the booking with the **service role**, formats a short message, and sends it with **Twilio**.
 
+**24-hour reminders:** A **scheduled** function **`booking-reminders`** runs **every hour** (UTC). It finds appointments that are **about 24 hours away** (same **Las Vegas** time logic as the booking form), sends one reminder SMS per booking, then sets **`reminder_sent_at`** so it never sends twice. If someone books with **less than ~24 hours** before the slot, they usually **won’t** get a separate reminder (only the immediate confirmation).
+
 Credentials stay in **Netlify environment variables** only — never in `config.js` or Git.
 
 ---
@@ -26,7 +28,7 @@ For SMS **to US mobile numbers** from a **US local Twilio number**, carriers exp
 | 1 | **Upgrade** off **Trial** if you plan to text real customers at scale (add billing). |
 | 2 | Go to **Messaging** → **Regulatory Compliance** → **US A2P 10DLC** (or use Twilio’s **“Register for A2P”** prompts on your phone number). |
 | 3 | **Brand** — Register **Blendz By Mora** (business details; sole proprietor or LLC flow as applicable). |
-| 4 | **Campaign** — Use a type that fits **transactional / customer care** (e.g. *Low Volume Standard*). Describe: customers submit appointments on your site; you send **one confirmation SMS** with service, date, and time. |
+| 4 | **Campaign** — Use a type that fits **transactional / customer care** (e.g. *Low Volume Standard*). Describe: customers submit appointments on your site; you send **confirmation SMS** plus **one reminder ~24 hours before** the appointment (service, date, time). Update wording if Twilio asks for sample messages. |
 | 5 | **Attach your Twilio number** — The same number in **`TWILIO_FROM_NUMBER`** must be **connected to the Messaging Service / campaign** Twilio assigns (follow their final steps). |
 
 **Docs:** [Twilio A2P 10DLC](https://www.twilio.com/docs/messaging/compliance/a2p-10dlc)
@@ -34,6 +36,18 @@ For SMS **to US mobile numbers** from a **US local Twilio number**, carriers exp
 **Timeline:** Approval often takes from **same day** to **several business days** (varies by brand type).
 
 **After you’re approved:** Submit a test booking on your **live site** with a normal cell number → check **Twilio → Monitor → Logs → Messaging** for **Delivered**. Your site code does not need to change for 10DLC once the number is compliant in Twilio.
+
+---
+
+## 2b. Supabase column for reminders (required)
+
+Run once in **Supabase → SQL Editor**:
+
+```sql
+ALTER TABLE bookings ADD COLUMN IF NOT EXISTS reminder_sent_at TIMESTAMPTZ;
+```
+
+Without this column, **`booking-reminders`** will error when querying. Existing rows start with `NULL` (not reminded yet).
 
 ---
 
@@ -97,7 +111,11 @@ Supabase **anonymous** policies must allow **`insert`** and a **`select`** on th
 
 ## 6. Message content
 
-Customers receive a short text with their **name**, **service**, **date**, and **time**, plus a note that you’ll confirm by email or phone. Edit the copy in **`netlify/functions/booking-sms.mjs`** (`buildBody`).
+**Confirmation** — Customers receive a short text with their **name**, **service**, **date**, and **time**, plus a note that you’ll confirm by email or phone. Edit the copy in **`netlify/functions/booking-sms.mjs`** (`buildBody`).
+
+**Reminder (~24h before)** — Edit **`netlify/functions/booking-reminders.mjs`** (`buildReminderBody`). The scheduler is **`netlify.toml`** → `[functions.booking-reminders]` (`0 * * * *` = every hour UTC). **`TWILIO_SMS_DISABLED`** turns off reminders too.
+
+**Logs:** After deploy, check **Netlify → Functions → booking-reminders** (runs on the hour). If you need a different cadence, change the cron expression (still UTC).
 
 ---
 

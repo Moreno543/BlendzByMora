@@ -12,7 +12,9 @@ A professional makeup artistry website with booking and reviews.
 
 4. **Private schedule page** (`admin.html`, today → next Friday, Las Vegas dates): see **[ADMIN_DASHBOARD.md](./ADMIN_DASHBOARD.md)** (requires Netlify + serverless function + env token).
 
-5. **SMS booking confirmation (optional):** Twilio texts the customer after Supabase saves the booking — see **[TWILIO_BOOKING_SMS.md](./TWILIO_BOOKING_SMS.md)**.
+5. **SMS (optional):** Twilio sends a confirmation after booking and a **~24h reminder** (scheduled function) — see **[TWILIO_BOOKING_SMS.md](./TWILIO_BOOKING_SMS.md)** (includes `reminder_sent_at` column).
+
+6. **Customer list (optional):** **`customer_contacts`** in Supabase stores **name, phone, email** from the booking form (auto-filled via trigger). See **[CUSTOMER_CONTACTS.md](./CUSTOMER_CONTACTS.md)**.
 
 ---
 
@@ -34,6 +36,7 @@ CREATE TABLE bookings (
   email TEXT NOT NULL,
   phone TEXT NOT NULL,
   notes TEXT,
+  reminder_sent_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 

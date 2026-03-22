@@ -4,3 +4,7 @@
 
 [functions]
   node_bundler = "esbuild"
+
+# Hourly UTC: sends ~24h reminder SMS (see booking-reminders.mjs + TWILIO_BOOKING_SMS.md)
+[functions.booking-reminders]
+  schedule = "0 * * * *"
