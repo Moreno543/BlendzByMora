@@ -2,6 +2,10 @@
   "name": "blendzbymora",
   "private": true,
   "type": "module",
+  "scripts": {
+    "dev": "npx netlify dev",
+    "start": "npx netlify dev"
+  },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.1"
   }

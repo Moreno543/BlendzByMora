@@ -4,14 +4,15 @@ A professional makeup artistry website with booking and reviews.
 
 ## Quick Start
 
-1. Open `index.html` in a browser, or serve the folder locally:
-   ```bash
-   npx serve .
-   ```
+1. **Full local test** (site + Netlify functions + env from Netlify): see **[TWILIO_BOOKING_SMS.md § Local testing](./TWILIO_BOOKING_SMS.md#4-local-testing-localhost)** — `npm install`, `npx netlify link`, then `npx netlify env:list --plain --context production > .env`, then `npm run dev`.
 
-2. For **booking with double-booking prevention** and **on-site reviews**, follow the setup below.
+2. **Static only** (no functions): open `index.html` or run `npx serve .`
 
-3. **Private schedule page** (`admin.html`, today → next Friday, Las Vegas dates): see **[ADMIN_DASHBOARD.md](./ADMIN_DASHBOARD.md)** (requires Netlify + serverless function + env token).
+3. For **booking with double-booking prevention** and **on-site reviews**, follow the setup below.
+
+4. **Private schedule page** (`admin.html`, today → next Friday, Las Vegas dates): see **[ADMIN_DASHBOARD.md](./ADMIN_DASHBOARD.md)** (requires Netlify + serverless function + env token).
+
+5. **SMS booking confirmation (optional):** Twilio texts the customer after Supabase saves the booking — see **[TWILIO_BOOKING_SMS.md](./TWILIO_BOOKING_SMS.md)**.
 
 ---
 

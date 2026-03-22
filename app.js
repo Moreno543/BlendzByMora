@@ -575,8 +575,32 @@ function initBookingForm() {
       // 1. Save to Supabase (prevents double booking)
       if (hasSupabase) {
         const supabaseClient = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
-        const { error } = await supabaseClient.from('bookings').insert([payload]);
+        const { data: inserted, error } = await supabaseClient
+          .from('bookings')
+          .insert([payload])
+          .select('id')
+          .single();
         if (error) throw error;
+        // SMS confirmation via Netlify + Twilio (non-blocking; booking still succeeds if SMS fails)
+        const newId = inserted?.id != null ? String(inserted.id).trim() : '';
+        if (newId) {
+          fetch('/.netlify/functions/booking-sms', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+            body: JSON.stringify({ bookingId: newId }),
+          })
+            .then(async (r) => {
+              if (!r.ok) {
+                const txt = await r.text().catch(() => '');
+                console.warn('[Blendz] SMS confirmation failed:', r.status, txt);
+              }
+            })
+            .catch((err) => console.warn('[Blendz] SMS request error:', err));
+        } else {
+          console.warn(
+            '[Blendz] No booking id returned after insert — SMS skipped. Check Supabase RLS allows SELECT on bookings for anon (needed for .select("id") after insert).'
+          );
+        }
       }
 
       // 2. Send to Formspree (email to you + CC copy to customer — same details as your notification)
