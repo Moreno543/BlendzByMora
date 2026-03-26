@@ -405,6 +405,24 @@ section h2 {
   font-size: 0.95rem;
 }
 
+.booking-notice {
+  max-width: 520px;
+  margin: 0 auto 1.25rem;
+  padding: 1rem 1.15rem;
+  text-align: center;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: var(--color-text-muted);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(201, 169, 98, 0.25);
+  border-radius: 6px;
+}
+
+.booking-notice strong {
+  color: var(--color-text);
+  font-weight: 600;
+}
+
 .setup-hint {
   max-width: 480px;
   margin: 0 auto 2rem;
