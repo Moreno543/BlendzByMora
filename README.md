@@ -53,8 +53,10 @@ CREATE POLICY "Allow anonymous select" ON bookings
 CREATE TABLE reviews (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   name TEXT NOT NULL,
+  service TEXT,
   rating TEXT NOT NULL,
   review TEXT NOT NULL,
+  image_url TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -90,6 +92,10 @@ CREATE POLICY "Allow anonymous select reviews" ON reviews
 5. (Optional) Create another form for **Reviews** and set `FORMSPREE_REVIEW_ID`.
 
 If your form includes **travel**, add a column: `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS travel TEXT DEFAULT 'No';`
+
+If your **reviews** form includes **service** (same options as booking), add: `ALTER TABLE reviews ADD COLUMN IF NOT EXISTS service TEXT;`
+
+Optional **review photos** use the **`review-images`** Storage bucket and **`image_url`** on `reviews` — set this up in Supabase as in **[SETUP_SUPABASE.md](./SETUP_SUPABASE.md)** (Storage + `ALTER TABLE reviews ADD COLUMN IF NOT EXISTS image_url TEXT;` if needed).
 
 ---
 

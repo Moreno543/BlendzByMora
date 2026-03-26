@@ -642,6 +642,36 @@ function initBookingForm() {
   });
 }
 
+const MAX_REVIEW_PHOTO_BYTES = 5 * 1024 * 1024;
+const ALLOWED_REVIEW_PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+
+async function uploadReviewPhotoToStorage(client, file) {
+  if (file.size > MAX_REVIEW_PHOTO_BYTES) {
+    throw new Error('Photo must be 5 MB or smaller.');
+  }
+  if (!ALLOWED_REVIEW_PHOTO_TYPES.includes(file.type)) {
+    throw new Error('Please use a JPG, PNG, or WebP image.');
+  }
+  const rawExt = (file.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '');
+  const ext = rawExt === 'jpeg' ? 'jpg' : rawExt || 'jpg';
+  const id = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const path = `reviews/${id}.${ext}`;
+  const { error } = await client.storage.from('review-images').upload(path, file, {
+    contentType: file.type,
+    cacheControl: '86400',
+    upsert: false,
+  });
+  if (error) throw error;
+  const { data } = client.storage.from('review-images').getPublicUrl(path);
+  return data?.publicUrl || null;
+}
+
+function safeReviewImageUrl(url) {
+  const s = String(url || '').trim();
+  if (!s.startsWith('https://') && !s.startsWith('http://')) return '';
+  return s;
+}
+
 // Review form
 function initReviewForm() {
   const form = document.getElementById('review-form');
@@ -658,22 +688,52 @@ function initReviewForm() {
       return;
     }
 
+    const photoInput = form.querySelector('#review-photo');
+
     try {
       const payload = {
         name: form.querySelector('#review-name').value,
+        service: form.querySelector('#review-service').value,
         rating: form.querySelector('#review-rating').value,
         review: form.querySelector('#review-text').value,
       };
 
+      let imageUrl = null;
       if (hasSupabase) {
         const client = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+        if (photoInput?.files?.[0]) {
+          try {
+            imageUrl = await uploadReviewPhotoToStorage(client, photoInput.files[0]);
+          } catch (upErr) {
+            console.warn(upErr);
+            const raw =
+              upErr?.message ||
+              upErr?.error ||
+              (typeof upErr === 'string' ? upErr : '') ||
+              'Could not upload photo.';
+            const bucketHint =
+              /bucket/i.test(raw) || /not found/i.test(raw)
+                ? '\n\nCreate the bucket: Supabase → Storage → New bucket → name exactly review-images → enable Public. Then in SQL Editor, run the two policies for review-images from SETUP_SUPABASE.md (anon INSERT + SELECT on storage.objects).'
+                : '';
+            const saveWithoutPhoto = window.confirm(
+              `${raw}${bucketHint}\n\nOK = save your review without a photo.\nCancel = stay here and fix Storage, then try again.`
+            );
+            if (!saveWithoutPhoto) return;
+          }
+        }
+        if (imageUrl) payload.image_url = imageUrl;
         const { error } = await client.from('reviews').insert([payload]);
         if (error) throw error;
       }
 
       if (hasFormspree) {
         const formData = new FormData();
-        Object.entries(payload).forEach(([k, v]) => { if (v) formData.append(k, v); });
+        Object.entries(payload).forEach(([k, v]) => {
+          if (v != null && v !== '') formData.append(k, v);
+        });
+        if (photoInput?.files?.[0]) {
+          formData.append('photo', photoInput.files[0]);
+        }
         await fetch(`https://formspree.io/f/${CONFIG.FORMSPREE_REVIEW_ID}`, {
           method: 'POST',
           body: formData,
@@ -703,7 +763,7 @@ async function loadReviews() {
   if (CONFIG.SUPABASE_URL && CONFIG.SUPABASE_ANON_KEY) {
     try {
       const client = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
-      const { data } = await client.from('reviews').select('*').order('created_at', { ascending: false }).limit(50);
+      const { data } = await client.from('reviews').select('*').order('created_at', { ascending: true }).limit(50);
       if (data && data.length) {
         reviewsData = data;
         currentReviewIndex = 0;
@@ -728,12 +788,21 @@ function renderReviewCarousel() {
   if (!list || !reviewsData.length) return;
 
   const r = reviewsData[currentReviewIndex];
-  const initial = escapeHtml(r.name).charAt(0).toUpperCase();
+  const imgSrc = safeReviewImageUrl(r.image_url);
+  const photoBlock = imgSrc
+    ? `<div class="review-item-image"><img class="review-item-img" src="${escapeAttr(imgSrc)}" alt="" loading="lazy" decoding="async"></div>`
+    : '';
+
+  const serviceLine =
+    r.service && String(r.service).trim()
+      ? `<div class="review-item-service">${escapeHtml(String(r.service).trim())}</div>`
+      : '';
 
   list.innerHTML = `
-    <div class="review-item review-item-allure">
-      <div class="review-item-image"><div class="review-item-placeholder"><span>${initial}</span></div></div>
+    <div class="review-item review-item-allure${imgSrc ? ' review-item-allure--has-photo' : ''}">
+      ${photoBlock}
       <div class="review-item-name">${escapeHtml(r.name)}</div>
+      ${serviceLine}
       <div class="review-item-rating">${'★'.repeat(Number(r.rating))}${'☆'.repeat(5 - Number(r.rating))}</div>
       <p class="review-item-text">${escapeHtml(r.review)}</p>
     </div>
@@ -809,4 +878,12 @@ function escapeHtml(text) {
   const div = document.createElement('div');
   div.textContent = text;
   return div.innerHTML;
+}
+
+function escapeAttr(text) {
+  return String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+    .replace(/</g, '&lt;');
 }

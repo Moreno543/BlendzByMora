@@ -67,11 +67,6 @@
   <section id="book" class="booking">
     <h2>Book Your Appointment</h2>
     <p class="booking-intro">Available 8am–6pm Monday thru Sunday. Last booking at 4pm.</p>
-    <p class="booking-notice" role="note">
-      <strong>Schedule update (May 4 – October 28, 2026):</strong>
-      I will be attending <strong>L Makeup Institute</strong> Monday through Thursday to complete my professional certification.
-      During those dates, <strong>appointments are not available Monday–Thursday</strong>; <strong>Fridays, Saturdays, and Sundays</strong> remain open when shown on the calendar. Thank you for your understanding.
-    </p>
     <div class="booking-container">
       <form id="booking-form" class="booking-form">
         <div class="form-row">
@@ -148,6 +143,24 @@
             <input type="text" id="review-name" name="name" required placeholder="Your name">
           </div>
           <div class="form-row">
+            <label for="review-service">Service</label>
+            <select id="review-service" name="service" required>
+              <option value="">Select a service</option>
+              <optgroup label="Glams">
+                <option value="Soft Glam - $100">Soft Glam — $100</option>
+                <option value="Full Glam - $150">Full Glam — $150</option>
+              </optgroup>
+              <optgroup label="Bridal">
+                <option value="Mother of the Bride & Mother of the Groom Glam - $100 each">Mother of the Bride & Mother of the Groom Glam — $100 each</option>
+                <option value="Bridesmaid Glam - $125">Bridesmaid Glam — $125</option>
+                <option value="Day-of Bridal Makeup - $200">Day-of Bridal Makeup — $200</option>
+                <option value="Bridal Glam + Bridal Trial + Custom Touch Up Kit - $350">Bridal Glam + Bridal Trial + Custom Touch Up Kit — $350</option>
+                <option value="Bridal Glam + Rehearsal Dinner Glam - $450">Bridal Glam + Rehearsal Dinner Glam — $450</option>
+                <option value="Bridal Trial + Rehearsal Dinner Glam + Day of Bridal Glam + Custom Touch-up Kit - $600">Bridal Trial + Rehearsal Dinner Glam + Day of Bridal Glam + Custom Touch-up Kit — $600</option>
+              </optgroup>
+            </select>
+          </div>
+          <div class="form-row">
             <label for="review-rating">Rating</label>
             <select id="review-rating" name="rating" required>
               <option value="">Select rating</option>
@@ -157,6 +170,11 @@
               <option value="2">★★☆☆☆</option>
               <option value="1">★☆☆☆☆</option>
             </select>
+          </div>
+          <div class="form-row">
+            <label for="review-photo">Photo <span class="optional-label">(optional)</span></label>
+            <input type="file" id="review-photo" name="photo" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp">
+            <span class="review-photo-hint">JPG, PNG, or WebP · max 5 MB. If you skip this, only your name, service, stars, and review text are shown.</span>
           </div>
           <div class="form-row">
             <label for="review-text">Your Review</label>
@@ -227,6 +245,6 @@
   <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js?v=6"></script>
-  <script src="app.js?v=10"></script>
+  <script src="app.js?v=14"></script>
 </body>
 </html>

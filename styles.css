@@ -405,24 +405,6 @@ section h2 {
   font-size: 0.95rem;
 }
 
-.booking-notice {
-  max-width: 520px;
-  margin: 0 auto 1.25rem;
-  padding: 1rem 1.15rem;
-  text-align: center;
-  font-size: 0.9rem;
-  line-height: 1.6;
-  color: var(--color-text-muted);
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(201, 169, 98, 0.25);
-  border-radius: 6px;
-}
-
-.booking-notice strong {
-  color: var(--color-text);
-  font-weight: 600;
-}
-
 .setup-hint {
   max-width: 480px;
   margin: 0 auto 2rem;
@@ -606,6 +588,20 @@ section h2 {
   font-family: var(--font-body);
 }
 
+.review-form .optional-label {
+  font-weight: 400;
+  opacity: 0.85;
+  font-size: 0.88em;
+}
+
+.review-form .review-photo-hint {
+  display: block;
+  margin-top: 0.45rem;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  line-height: 1.45;
+}
+
 .review-form input[type="file"] {
   padding: 0.5rem 0;
   font-size: 0.85rem;
@@ -737,6 +733,14 @@ section h2 {
   letter-spacing: 0.1em;
   padding: 1rem 1rem 0.25rem;
   font-size: 0.9rem;
+}
+
+.review-item-allure .review-item-service {
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+  padding: 0 1rem 0.35rem;
+  line-height: 1.4;
 }
 
 .review-item-allure .review-item-rating {

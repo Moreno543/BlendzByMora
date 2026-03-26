@@ -63,6 +63,7 @@ CREATE POLICY "Allow anonymous select" ON bookings
 CREATE TABLE reviews (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   name TEXT NOT NULL,
+  service TEXT,
   rating TEXT NOT NULL,
   review TEXT NOT NULL,
   image_url TEXT,
@@ -95,6 +96,7 @@ If you already created the tables, run these to add new columns:
 ```sql
 ALTER TABLE bookings ADD COLUMN IF NOT EXISTS travel TEXT DEFAULT 'No';
 ALTER TABLE bookings ADD COLUMN IF NOT EXISTS reminder_sent_at TIMESTAMPTZ;
+ALTER TABLE reviews ADD COLUMN IF NOT EXISTS service TEXT;
 ALTER TABLE reviews ADD COLUMN IF NOT EXISTS image_url TEXT;
 ```
 
