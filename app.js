@@ -677,6 +677,15 @@ function initReviewForm() {
   const form = document.getElementById('review-form');
   if (!form) return;
 
+  const photoInput = form.querySelector('#review-photo');
+  const fileNameEl = document.getElementById('review-file-name');
+  if (photoInput && fileNameEl) {
+    photoInput.addEventListener('change', () => {
+      const f = photoInput.files?.[0];
+      fileNameEl.textContent = f ? f.name : '';
+    });
+  }
+
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
 
@@ -687,8 +696,6 @@ function initReviewForm() {
       alert('Reviews are not yet configured. You can leave a review on Yelp or Google!');
       return;
     }
-
-    const photoInput = form.querySelector('#review-photo');
 
     try {
       const payload = {
@@ -743,6 +750,7 @@ function initReviewForm() {
 
       alert('Thank you for your review!');
       form.reset();
+      if (fileNameEl) fileNameEl.textContent = '';
       loadReviews();
     } catch (err) {
       alert('Could not submit. You can also leave a review on Yelp or Google!');

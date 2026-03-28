@@ -171,10 +171,13 @@
               <option value="1">★☆☆☆☆</option>
             </select>
           </div>
-          <div class="form-row">
+          <div class="form-row review-photo-row">
             <label for="review-photo">Photo <span class="optional-label">(optional)</span></label>
-            <input type="file" id="review-photo" name="photo" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp">
-            <span class="review-photo-hint">JPG, PNG, or WebP · max 5 MB. If you skip this, only your name, service, stars, and review text are shown.</span>
+            <div class="review-file-picker">
+              <input type="file" id="review-photo" name="photo" class="review-file-input" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" aria-describedby="review-photo-hint">
+              <span id="review-file-name" class="review-file-name" aria-live="polite"></span>
+            </div>
+            <span class="review-photo-hint" id="review-photo-hint">JPG, PNG, or WebP · max 5 MB. If you skip this, only your name, service, stars, and review text are shown.</span>
           </div>
           <div class="form-row">
             <label for="review-text">Your Review</label>
@@ -245,6 +248,6 @@
   <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js?v=6"></script>
-  <script src="app.js?v=14"></script>
+  <script src="app.js?v=15"></script>
 </body>
 </html>
