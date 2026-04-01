@@ -16,7 +16,6 @@
  *        email TEXT NOT NULL,
  *        phone TEXT NOT NULL,
  *        notes TEXT,
- *        reminder_sent_at TIMESTAMPTZ,
  *        created_at TIMESTAMPTZ DEFAULT NOW()
  *      );
  *    - Enable Row Level Security (RLS) but add policy to allow anonymous INSERT and SELECT

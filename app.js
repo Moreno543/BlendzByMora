@@ -581,24 +581,9 @@ function initBookingForm() {
           .select('id')
           .single();
         if (error) throw error;
-        // SMS confirmation via Netlify + Twilio (non-blocking; booking still succeeds if SMS fails)
-        const newId = inserted?.id != null ? String(inserted.id).trim() : '';
-        if (newId) {
-          fetch('/.netlify/functions/booking-sms', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-            body: JSON.stringify({ bookingId: newId }),
-          })
-            .then(async (r) => {
-              if (!r.ok) {
-                const txt = await r.text().catch(() => '');
-                console.warn('[Blendz] SMS confirmation failed:', r.status, txt);
-              }
-            })
-            .catch((err) => console.warn('[Blendz] SMS request error:', err));
-        } else {
+        if (inserted?.id == null) {
           console.warn(
-            '[Blendz] No booking id returned after insert — SMS skipped. Check Supabase RLS allows SELECT on bookings for anon (needed for .select("id") after insert).'
+            '[Blendz] No booking id returned after insert. Check Supabase RLS allows SELECT on bookings for anon (needed for .select("id") after insert).'
           );
         }
       }
@@ -761,6 +746,62 @@ function initReviewForm() {
 // Reviews carousel state
 let reviewsData = [];
 let currentReviewIndex = 0;
+let reviewsAutoTimer = null;
+/** Auto-advance interval (ms) — slow rotation similar to story-style UIs */
+const REVIEWS_AUTO_MS = 11000;
+
+function reviewsReducedMotion() {
+  try {
+    return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  } catch (_) {
+    return false;
+  }
+}
+
+function clearReviewsAutoAdvance() {
+  if (reviewsAutoTimer) {
+    clearTimeout(reviewsAutoTimer);
+    reviewsAutoTimer = null;
+  }
+}
+
+function scheduleReviewsAutoAdvance() {
+  clearReviewsAutoAdvance();
+  if (reviewsData.length <= 1 || reviewsReducedMotion()) return;
+  if (typeof document !== 'undefined' && document.hidden) return;
+  const carousel = document.querySelector('.reviews-carousel');
+  if (carousel?.dataset.userHover === '1') return;
+
+  reviewsAutoTimer = setTimeout(() => {
+    reviewsAutoTimer = null;
+    currentReviewIndex = (currentReviewIndex + 1) % reviewsData.length;
+    renderReviewCarousel();
+    renderReviewDots();
+    scheduleReviewsAutoAdvance();
+  }, REVIEWS_AUTO_MS);
+}
+
+function restartReviewsAutoAdvance() {
+  scheduleReviewsAutoAdvance();
+}
+
+function attachReviewsCarouselPauseHooks() {
+  const carousel = document.querySelector('.reviews-carousel');
+  if (!carousel || carousel.dataset.pauseHooks === '1') return;
+  carousel.dataset.pauseHooks = '1';
+  carousel.addEventListener('mouseenter', () => {
+    carousel.dataset.userHover = '1';
+    clearReviewsAutoAdvance();
+  });
+  carousel.addEventListener('mouseleave', () => {
+    delete carousel.dataset.userHover;
+    scheduleReviewsAutoAdvance();
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) clearReviewsAutoAdvance();
+    else if (carousel.dataset.userHover !== '1') scheduleReviewsAutoAdvance();
+  });
+}
 
 // Load and display reviews
 async function loadReviews() {
@@ -778,6 +819,8 @@ async function loadReviews() {
         renderReviewCarousel();
         initReviewCarousel();
         renderReviewDots();
+        attachReviewsCarouselPauseHooks();
+        restartReviewsAutoAdvance();
         return;
       }
     } catch (err) {
@@ -786,6 +829,7 @@ async function loadReviews() {
   }
 
   reviewsData = [];
+  clearReviewsAutoAdvance();
   list.innerHTML = '<p class="review-item-text" style="text-align:center;color:var(--color-text-muted);padding:2rem">No reviews yet. Be the first to leave one!</p>';
   if (dotsContainer) dotsContainer.innerHTML = '';
 }
@@ -819,8 +863,14 @@ function renderReviewCarousel() {
   if (reviewsData.length > 1 && dotsContainer) renderReviewDots();
   const prevBtn = document.querySelector('.carousel-prev');
   const nextBtn = document.querySelector('.carousel-next');
-  if (prevBtn) { prevBtn.disabled = currentReviewIndex === 0; prevBtn.style.opacity = currentReviewIndex === 0 ? '0.4' : '1'; }
-  if (nextBtn) { nextBtn.disabled = currentReviewIndex === reviewsData.length - 1; nextBtn.style.opacity = currentReviewIndex === reviewsData.length - 1 ? '0.4' : '1'; }
+  if (prevBtn) {
+    prevBtn.disabled = false;
+    prevBtn.style.opacity = '1';
+  }
+  if (nextBtn) {
+    nextBtn.disabled = false;
+    nextBtn.style.opacity = '1';
+  }
 }
 
 function renderReviewDots() {
@@ -834,6 +884,7 @@ function renderReviewDots() {
       currentReviewIndex = parseInt(btn.dataset.index, 10);
       renderReviewCarousel();
       renderReviewDots();
+      restartReviewsAutoAdvance();
     };
   });
 }
@@ -843,6 +894,7 @@ function initReviewCarousel() {
   const nextBtn = document.querySelector('.carousel-next');
 
   if (reviewsData.length <= 1) {
+    clearReviewsAutoAdvance();
     if (prevBtn) prevBtn.style.visibility = 'hidden';
     if (nextBtn) nextBtn.style.visibility = 'hidden';
     return;
@@ -850,36 +902,24 @@ function initReviewCarousel() {
   if (prevBtn) prevBtn.style.visibility = 'visible';
   if (nextBtn) nextBtn.style.visibility = 'visible';
 
+  const len = reviewsData.length;
   const go = () => {
     renderReviewCarousel();
     renderReviewDots();
-    updateArrowStates();
+    restartReviewsAutoAdvance();
   };
 
-  function updateArrowStates() {
-    if (prevBtn) {
-      prevBtn.disabled = currentReviewIndex === 0;
-      prevBtn.style.opacity = currentReviewIndex === 0 ? '0.4' : '1';
-    }
-    if (nextBtn) {
-      nextBtn.disabled = currentReviewIndex === reviewsData.length - 1;
-      nextBtn.style.opacity = currentReviewIndex === reviewsData.length - 1 ? '0.4' : '1';
-    }
-  }
-
-  if (prevBtn) prevBtn.onclick = () => {
-    if (currentReviewIndex > 0) {
-      currentReviewIndex--;
+  if (prevBtn)
+    prevBtn.onclick = () => {
+      currentReviewIndex = (currentReviewIndex - 1 + len) % len;
       go();
-    }
-  };
-  if (nextBtn) nextBtn.onclick = () => {
-    if (currentReviewIndex < reviewsData.length - 1) {
-      currentReviewIndex++;
+    };
+  if (nextBtn)
+    nextBtn.onclick = () => {
+      currentReviewIndex = (currentReviewIndex + 1) % len;
       go();
-    }
-  };
-  updateArrowStates();
+    };
+  restartReviewsAutoAdvance();
 }
 
 function escapeHtml(text) {

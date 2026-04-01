@@ -38,7 +38,6 @@ CREATE TABLE bookings (
   phone TEXT NOT NULL,
   travel TEXT DEFAULT 'No',
   notes TEXT,
-  reminder_sent_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -95,7 +94,6 @@ If you already created the tables, run these to add new columns:
 
 ```sql
 ALTER TABLE bookings ADD COLUMN IF NOT EXISTS travel TEXT DEFAULT 'No';
-ALTER TABLE bookings ADD COLUMN IF NOT EXISTS reminder_sent_at TIMESTAMPTZ;
 ALTER TABLE reviews ADD COLUMN IF NOT EXISTS service TEXT;
 ALTER TABLE reviews ADD COLUMN IF NOT EXISTS image_url TEXT;
 ```
