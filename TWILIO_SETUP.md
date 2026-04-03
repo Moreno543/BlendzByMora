@@ -67,19 +67,13 @@ ALTER TABLE bookings ADD COLUMN IF NOT EXISTS sms_confirmed_at TIMESTAMPTZ;
 2. Add your **Twilio number** to the service **Sender pool**.  
 3. **Regulatory Compliance** → **US A2P 10DLC** — **Brand** approved, **Campaign** approved, campaign **linked** to that Messaging Service (fixes common **30034** errors).
 
-### Blendz By Mora — A2P resource IDs (saved from Console)
+### A2P resource IDs (keep privately — not in Git)
 
-Registration was completed in the Twilio wizard; **campaign vetting** can take time. Until the campaign shows **approved**, some US traffic may stay blocked. Check status in **[Twilio A2P / Regulatory Compliance](https://console.twilio.com/us1/develop/sms/regulatory-compliance/a2p-10dlc)** (open each SID below).
+After you register, Twilio shows **Customer Profile**, **Brand**, and **Campaign** SIDs in the A2P console. **Do not paste real SIDs into this repo** — Netlify’s build can fail with **“Exposed secrets detected.”** Store them in a password manager or private notes instead.
 
-These SIDs are **not** secret like your Auth Token — they’re stable references for support and your own notes.
+Check status in **[Twilio A2P / Regulatory Compliance](https://console.twilio.com/us1/develop/sms/regulatory-compliance/a2p-10dlc)**.
 
-| Resource | SID |
-|----------|-----|
-| **Customer Profile** | `BU0b7505cb5373f7f43051183a9d750f19` |
-| **A2P Brand** | `BNcb7a5fae82874a03d3aae1d1a07bcbf5` |
-| **A2P Campaign** | `CM94d21647fc7692a2d93fa5b2a3b98fd1` |
-
-After vetting: confirm **`+17253307284`** (or your current sender) is still in the **Messaging Service** linked to **this** campaign.
+After vetting: confirm your **sending number** is still in the **Messaging Service** linked to **this** campaign.
 
 ---
 
