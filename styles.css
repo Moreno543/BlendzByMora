@@ -231,15 +231,6 @@ section h2 {
   margin-right: auto;
 }
 
-.home-services-cta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
-  justify-content: center;
-  align-items: center;
-  margin-top: 2.5rem;
-}
-
 .bucket-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
