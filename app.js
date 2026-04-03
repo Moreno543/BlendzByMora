@@ -129,8 +129,8 @@ function initMobileMenu() {
   }
 }
 
-/** Direct visits (e.g. index.html#contact): re-align after layout so “Get In Touch” clears the fixed header */
-function initInPageHashScrollOnLoad() {
+/** Re-scroll to #fragment (respects html scroll-padding-top). Safe to call multiple times as layout changes. */
+function alignScrollToHashTarget(behavior = 'auto') {
   const h = window.location.hash;
   if (!h || h.length < 2 || h === '#book') return;
   const id = decodeURIComponent(h.slice(1));
@@ -138,9 +138,17 @@ function initInPageHashScrollOnLoad() {
   if (!el) return;
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
-      el.scrollIntoView({ block: 'start', behavior: 'auto' });
+      el.scrollIntoView({ block: 'start', behavior });
     });
   });
+}
+
+/** Direct visits (e.g. FAQ → index.html#contact): align early, again after assets, and after reviews inject (see loadReviews). */
+function initInPageHashScrollOnLoad() {
+  alignScrollToHashTarget('auto');
+  if (window.location.hash && window.location.hash !== '#book') {
+    window.addEventListener('load', () => alignScrollToHashTarget('auto'), { once: true });
+  }
 }
 
 // Nav scroll: scrollIntoView respects html scroll-padding-top (fixed header)
@@ -864,29 +872,34 @@ async function loadReviews() {
   const dotsContainer = document.getElementById('reviews-dots');
   if (!list) return;
 
-  if (CONFIG.SUPABASE_URL && CONFIG.SUPABASE_ANON_KEY) {
-    try {
-      const client = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
-      const { data } = await client.from('reviews').select('*').order('created_at', { ascending: true }).limit(50);
-      if (data && data.length) {
-        reviewsData = data;
-        currentReviewIndex = 0;
-        renderReviewCarousel();
-        initReviewCarousel();
-        renderReviewDots();
-        attachReviewsCarouselPauseHooks();
-        restartReviewsAutoAdvance();
-        return;
+  try {
+    if (CONFIG.SUPABASE_URL && CONFIG.SUPABASE_ANON_KEY) {
+      try {
+        const client = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+        const { data } = await client.from('reviews').select('*').order('created_at', { ascending: true }).limit(50);
+        if (data && data.length) {
+          reviewsData = data;
+          currentReviewIndex = 0;
+          renderReviewCarousel();
+          initReviewCarousel();
+          renderReviewDots();
+          attachReviewsCarouselPauseHooks();
+          restartReviewsAutoAdvance();
+          return;
+        }
+      } catch (err) {
+        console.warn('Reviews not loaded:', err);
       }
-    } catch (err) {
-      console.warn('Reviews not loaded:', err);
     }
-  }
 
-  reviewsData = [];
-  clearReviewsAutoAdvance();
-  list.innerHTML = '<p class="review-item-text" style="text-align:center;color:var(--color-text-muted);padding:2rem">No reviews yet. Be the first to leave one!</p>';
-  if (dotsContainer) dotsContainer.innerHTML = '';
+    reviewsData = [];
+    clearReviewsAutoAdvance();
+    list.innerHTML = '<p class="review-item-text" style="text-align:center;color:var(--color-text-muted);padding:2rem">No reviews yet. Be the first to leave one!</p>';
+    if (dotsContainer) dotsContainer.innerHTML = '';
+  } finally {
+    // Cross-page links (e.g. faq → index#contact) scroll before reviews render; re-align once carousel/placeholder DOM exists
+    alignScrollToHashTarget('auto');
+  }
 }
 
 function renderReviewCarousel() {
