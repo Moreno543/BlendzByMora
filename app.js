@@ -428,6 +428,9 @@ async function updateTimeSlots(dateStr) {
     return;
   }
 
+  // Keep selection when the same date is refreshed (30s timer, visibility, autofill) — rebuild would clear it otherwise.
+  const preservedTime = (timeSelect.value || '').trim();
+
   const requestId = ++updateTimeSlotsSeq;
   const allSlots = BOOKING_TIME_SLOTS;
 
@@ -471,6 +474,14 @@ async function updateTimeSlots(dateStr) {
 
   if (!anyEnabled) {
     timeSelect.innerHTML = '<option value="">No times available — choose another date</option>';
+    return;
+  }
+
+  if (preservedTime) {
+    const stillOk = Array.from(timeSelect.options).some(
+      (o) => o.value === preservedTime && !o.disabled
+    );
+    if (stillOk) timeSelect.value = preservedTime;
   }
 }
 
