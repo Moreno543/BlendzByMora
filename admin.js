@@ -13,6 +13,7 @@
   const rangeEl = document.getElementById('admin-range');
   const countEl = document.getElementById('admin-count');
   const tbody = document.getElementById('admin-tbody');
+  const confirmFilterWrap = document.getElementById('admin-confirm-filters');
   const refreshBtn = document.getElementById('admin-refresh');
   const logoutBtn = document.getElementById('admin-logout');
   const loadingEl = document.getElementById('admin-loading');
@@ -22,6 +23,8 @@
   const presetDefault = document.getElementById('admin-preset-default');
   const preset14 = document.getElementById('admin-preset-14');
   const preset30 = document.getElementById('admin-preset-30');
+
+  let confirmFilter = 'all';
 
   /** Same order as netlify/functions/admin-bookings.mjs — earliest date/time first. */
   const SLOT_ORDER = ['8:00 AM', '10:00 AM', '12:00 PM', '2:00 PM', '4:00 PM'];
@@ -119,6 +122,14 @@
     };
   }
 
+  function syncConfirmFilterButtons() {
+    if (!confirmFilterWrap) return;
+    confirmFilterWrap.querySelectorAll('[data-confirm-filter]').forEach((btn) => {
+      const v = btn.getAttribute('data-confirm-filter');
+      btn.classList.toggle('btn-admin-filter-active', v === confirmFilter);
+    });
+  }
+
   async function loadBookings() {
     const token = getToken();
     if (!token) {
@@ -136,8 +147,9 @@
     showError('');
     loadingEl.hidden = false;
     tbody.innerHTML = '';
+    syncConfirmFilterButtons();
 
-    const body = { token, ...rangeCheck.extra };
+    const body = { token, confirmFilter, ...rangeCheck.extra };
 
     try {
       const res = await fetchBookingsWithRetry(body);
@@ -168,10 +180,20 @@
       rangeEl.textContent = data.range?.label || '';
       countEl.textContent = data.count != null ? String(data.count) : '—';
 
+      if (data.confirmFilter && ['all', 'confirmed', 'unconfirmed'].includes(data.confirmFilter)) {
+        confirmFilter = data.confirmFilter;
+        syncConfirmFilterButtons();
+      }
+
       const rows = sortBookingsLocal(data.bookings || []);
       if (rows.length === 0) {
-        tbody.innerHTML =
-          '<tr><td colspan="8" class="admin-empty" data-label="">No appointments in this date range.</td></tr>';
+        const hint =
+          confirmFilter === 'confirmed'
+            ? ' No appointments in this range have an SMS YES yet.'
+            : confirmFilter === 'unconfirmed'
+              ? ' Every appointment in this range is SMS-confirmed, or there are none.'
+              : '';
+        tbody.innerHTML = `<tr><td colspan="9" class="admin-empty" data-label="">No appointments in this date range.${escapeHtml(hint)}</td></tr>`;
         return;
       }
 
@@ -190,6 +212,7 @@
           <td data-label="Phone">${phoneCell(r.phone)}</td>
           <td data-label="Travel" class="admin-nowrap">${cell(r.travel || '')}</td>
           <td data-label="Notes" class="admin-notes admin-td-notes">${notesCell(r.notes)}</td>
+          <td data-label="SMS YES" class="admin-nowrap">${smsYesCell(r)}</td>
         `;
         tbody.appendChild(tr);
       }
@@ -225,6 +248,24 @@
   function notesCell(notes) {
     const t = escapeHtml(notes || '');
     return t ? `<span class="admin-cell-value">${t}</span>` : '';
+  }
+
+  function formatConfirmAt(iso) {
+    try {
+      const d = new Date(iso);
+      if (Number.isNaN(d.getTime())) return String(iso || '');
+      return d.toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' });
+    } catch {
+      return String(iso || '');
+    }
+  }
+
+  function smsYesCell(r) {
+    if (!r.sms_confirmed_at) {
+      return '<span class="admin-cell-value" style="color:var(--color-text-muted)">—</span>';
+    }
+    const dt = formatConfirmAt(r.sms_confirmed_at);
+    return `<span class="admin-cell-value">${escapeHtml(dt)}</span>`;
   }
 
   function escapeHtml(s) {
@@ -276,11 +317,26 @@
   });
 
   refreshBtn.addEventListener('click', () => loadBookings());
+
+  if (confirmFilterWrap) {
+    confirmFilterWrap.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-confirm-filter]');
+      if (!btn) return;
+      const v = btn.getAttribute('data-confirm-filter');
+      if (!v || v === confirmFilter) return;
+      confirmFilter = v;
+      syncConfirmFilterButtons();
+      loadBookings();
+    });
+  }
+
   logoutBtn.addEventListener('click', () => {
     setToken('');
     loginSection.hidden = false;
     dashboardSection.hidden = true;
     tbody.innerHTML = '';
+    confirmFilter = 'all';
+    syncConfirmFilterButtons();
     dateFrom.value = '';
     dateTo.value = '';
     showError('');

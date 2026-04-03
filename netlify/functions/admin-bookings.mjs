@@ -1,6 +1,7 @@
 /**
  * Admin: list bookings in a date range (Las Vegas YYYY-MM-DD).
- * POST JSON: { token, start?, end? } — omit start/end for default week through next Friday.
+ * POST JSON: { token, start?, end?, confirmFilter? } — omit start/end for default week through next Friday.
+ * confirmFilter: "all" | "confirmed" | "unconfirmed" — filter by bookings.sms_confirmed_at (SMS YES).
  * Env: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, ADMIN_DASHBOARD_TOKEN
  */
 import { createClient } from '@supabase/supabase-js';
@@ -78,6 +79,14 @@ function resolveRange(body) {
   };
 }
 
+/** Filter by SMS YES timestamp on bookings (column sms_confirmed_at). */
+function resolveConfirmFilter(body) {
+  const v = typeof body?.confirmFilter === 'string' ? body.confirmFilter.trim().toLowerCase() : '';
+  if (v === 'confirmed' || v === 'yes') return 'confirmed';
+  if (v === 'unconfirmed' || v === 'no' || v === 'pending') return 'unconfirmed';
+  return 'all';
+}
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'Content-Type, X-Admin-Token',
@@ -122,7 +131,15 @@ export default async function handler(request) {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
-  const { start, end, label } = resolved;
+  const { start, end, label: rangeLabel } = resolved;
+  const confirmFilter = resolveConfirmFilter(body);
+  const filterSuffix =
+    confirmFilter === 'confirmed'
+      ? ' — SMS confirmed only'
+      : confirmFilter === 'unconfirmed'
+        ? ' — not SMS-confirmed only'
+        : '';
+  const label = rangeLabel + filterSuffix;
 
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -136,13 +153,20 @@ export default async function handler(request) {
   const supabase = createClient(url, key, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
-  const { data, error } = await supabase
+
+  let query = supabase
     .from('bookings')
-    .select('id, date, time, service, name, email, phone, travel, notes, created_at')
+    .select('id, date, time, service, name, email, phone, travel, notes, created_at, sms_confirmed_at')
     .gte('date', start)
-    .lte('date', end)
-    .order('date', { ascending: true })
-    .order('time', { ascending: true });
+    .lte('date', end);
+
+  if (confirmFilter === 'confirmed') {
+    query = query.not('sms_confirmed_at', 'is', null);
+  } else if (confirmFilter === 'unconfirmed') {
+    query = query.is('sms_confirmed_at', null);
+  }
+
+  const { data, error } = await query.order('date', { ascending: true }).order('time', { ascending: true });
 
   if (error) {
     return new Response(JSON.stringify({ error: error.message }), {
@@ -156,6 +180,7 @@ export default async function handler(request) {
     JSON.stringify({
       ok: true,
       range: { start, end, label },
+      confirmFilter,
       count: bookings.length,
       bookings,
     }),

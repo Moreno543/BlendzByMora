@@ -14,12 +14,13 @@ This page is **not** linked anywhere on the public site. Bookmark:
 ## How it works
 
 1. **`admin.html`** — login form (token only; no password in Git).
-2. **`netlify/functions/admin-bookings.mjs`** — server-side function uses **`SUPABASE_SERVICE_ROLE_KEY`** to read `bookings` for the requested range (max **120** days). Your **anon** key stays in `config.js` for the public booking form only.
+2. **`netlify/functions/admin-bookings.mjs`** — server-side function uses **`SUPABASE_SERVICE_ROLE_KEY`** to read **`bookings`** for the requested range (max **120** days), including **`sms_confirmed_at`** (set when the client texts **YES**). Use **SMS confirmation** filters: **All**, **SMS confirmed**, or **Not confirmed**. Your **anon** key stays in `config.js` for the public booking form only.
 
 **API (POST JSON):**
 
 - `{ "token": "…" }` — default Vegas week through next Friday.
 - `{ "token": "…", "start": "YYYY-MM-DD", "end": "YYYY-MM-DD" }` — inclusive range; both required if you send either.
+- Optional **`confirmFilter`:** `"all"` (default), `"confirmed"`, or `"unconfirmed"` — matches **`bookings.sms_confirmed_at`** set vs unset.
 
 ---
 

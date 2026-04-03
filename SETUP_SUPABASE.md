@@ -38,6 +38,8 @@ CREATE TABLE bookings (
   phone TEXT NOT NULL,
   travel TEXT DEFAULT 'No',
   notes TEXT,
+  reminder_sent_at TIMESTAMPTZ,
+  sms_confirmed_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -88,12 +90,21 @@ Keep a simple customer list **without** changing the website: a trigger copies e
 1. In **SQL Editor**, open **`sql/customer_contacts.sql`** in this repo, copy all, paste, **Run** once (or use the same block in **`CUSTOMER_CONTACTS.md`**).
 2. View rows in **Table Editor → `customer_contacts`** (not visible to the public site).
 
+### SMS reminders & “YES” confirmations (optional)
+
+1. In **SQL Editor**, run **[TWILIO_SETUP.md](./TWILIO_SETUP.md)** Step 1 (adds **`reminder_sent_at`** and **`sms_confirmed_at`** on **`bookings`**), or run:
+   `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS reminder_sent_at TIMESTAMPTZ;` and  
+   `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS sms_confirmed_at TIMESTAMPTZ;`
+2. Set Netlify + Twilio per **TWILIO_SETUP.md**.
+
 ### Add Travel & Image Columns (if tables already exist)
 
 If you already created the tables, run these to add new columns:
 
 ```sql
 ALTER TABLE bookings ADD COLUMN IF NOT EXISTS travel TEXT DEFAULT 'No';
+ALTER TABLE bookings ADD COLUMN IF NOT EXISTS reminder_sent_at TIMESTAMPTZ;
+ALTER TABLE bookings ADD COLUMN IF NOT EXISTS sms_confirmed_at TIMESTAMPTZ;
 ALTER TABLE reviews ADD COLUMN IF NOT EXISTS service TEXT;
 ALTER TABLE reviews ADD COLUMN IF NOT EXISTS image_url TEXT;
 ```

@@ -4,7 +4,7 @@ A professional makeup artistry website with booking and reviews.
 
 ## Quick Start
 
-1. **Full local test** (site + Netlify functions + env from Netlify): `npm install`, `npx netlify link`, then `npx netlify env:list --plain --context production > .env` (or copy `.env.example`), then `npm run dev`.
+1. **Full local test** (site + Netlify functions + env): `npm install`, `npx netlify link`, then `npx netlify env:list --plain --context production > .env` (or copy `.env.example`), then `npm run dev`. **Twilio + Supabase service role:** see **[TWILIO_SETUP.md](./TWILIO_SETUP.md)**.
 
 2. **Static only** (no functions): open `index.html` or run `npx serve .`
 
@@ -13,6 +13,8 @@ A professional makeup artistry website with booking and reviews.
 4. **Private schedule page** (`admin.html`, today → next Friday, Las Vegas dates): see **[ADMIN_DASHBOARD.md](./ADMIN_DASHBOARD.md)** (requires Netlify + serverless function + env token).
 
 5. **Customer list (optional):** **`customer_contacts`** in Supabase stores **name, phone, email** from the booking form (auto-filled via trigger). See **[CUSTOMER_CONTACTS.md](./CUSTOMER_CONTACTS.md)**.
+
+6. **SMS (optional):** Twilio sends a **confirmation** after booking and a **~24h reminder**; inbound **YES** sets **`bookings.sms_confirmed_at`**. Filter confirmed appointments on **`admin.html`**. Step-by-step: **[TWILIO_SETUP.md](./TWILIO_SETUP.md)** (includes Supabase SQL).
 
 ---
 
@@ -33,7 +35,10 @@ CREATE TABLE bookings (
   name TEXT NOT NULL,
   email TEXT NOT NULL,
   phone TEXT NOT NULL,
+  travel TEXT DEFAULT 'No',
   notes TEXT,
+  reminder_sent_at TIMESTAMPTZ,
+  sms_confirmed_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 

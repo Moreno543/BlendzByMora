@@ -114,6 +114,11 @@
     .admin-loading { color: var(--color-text-muted); margin-top: 1rem; }
     .admin-back { margin-top: 2rem; }
     .admin-back a { color: var(--color-accent); }
+    .btn-admin-filter-active {
+      background: rgba(201, 169, 98, 0.2);
+      border-color: var(--color-accent);
+      color: var(--color-accent);
+    }
   </style>
 </head>
 <body>
@@ -161,6 +166,12 @@
           <button type="button" class="btn-admin btn-admin-small" id="admin-preset-14">Next 14 days</button>
           <button type="button" class="btn-admin btn-admin-small" id="admin-preset-30">Next 30 days</button>
         </div>
+        <p class="admin-meta" style="margin-top:1rem;margin-bottom:0.35rem;">SMS confirmation</p>
+        <div class="admin-presets" id="admin-confirm-filters">
+          <button type="button" class="btn-admin btn-admin-small btn-admin-filter-active" data-confirm-filter="all" id="admin-filter-all">All</button>
+          <button type="button" class="btn-admin btn-admin-small" data-confirm-filter="confirmed" id="admin-filter-confirmed">SMS confirmed</button>
+          <button type="button" class="btn-admin btn-admin-small" data-confirm-filter="unconfirmed" id="admin-filter-unconfirmed">Not confirmed</button>
+        </div>
         <p class="admin-meta" id="admin-range" style="margin-top:1rem;"></p>
         <p class="admin-meta"><strong id="admin-count">—</strong> appointment(s) in this window.</p>
         <div class="admin-actions">
@@ -181,6 +192,7 @@
               <th>Phone</th>
               <th>Travel</th>
               <th>Notes</th>
+              <th>SMS YES</th>
             </tr>
           </thead>
           <tbody id="admin-tbody"></tbody>
@@ -191,6 +203,6 @@
     <p class="admin-back"><a href="index.html">← Back to site</a></p>
   </main>
 
-  <script src="admin.js?v=7"></script>
+  <script src="admin.js?v=9"></script>
 </body>
 </html>

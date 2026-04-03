@@ -581,9 +581,23 @@ function initBookingForm() {
           .select('id')
           .single();
         if (error) throw error;
-        if (inserted?.id == null) {
+        const newId = inserted?.id != null ? String(inserted.id).trim() : '';
+        if (newId) {
+          fetch('/.netlify/functions/booking-sms', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+            body: JSON.stringify({ bookingId: newId }),
+          })
+            .then(async (r) => {
+              if (!r.ok) {
+                const txt = await r.text().catch(() => '');
+                console.warn('[Blendz] SMS confirmation failed:', r.status, txt);
+              }
+            })
+            .catch((err) => console.warn('[Blendz] SMS request error:', err));
+        } else {
           console.warn(
-            '[Blendz] No booking id returned after insert. Check Supabase RLS allows SELECT on bookings for anon (needed for .select("id") after insert).'
+            '[Blendz] No booking id returned after insert — SMS skipped. Check Supabase RLS allows SELECT on bookings for anon (needed for .select("id") after insert).'
           );
         }
       }

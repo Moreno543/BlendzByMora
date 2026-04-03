@@ -61,7 +61,7 @@ export function vegasTodayYmd() {
 }
 
 /** Add n calendar days in Las Vegas (n = 0 returns ymd). */
-function addVegasDays(ymd, n) {
+export function addVegasDays(ymd, n) {
   let cur = ymd;
   for (let j = 0; j < n; j++) {
     const ms = utcMsForZonedWallClock(cur, 12, 0, TZ) + 86400000;
