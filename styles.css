@@ -19,7 +19,8 @@
 
 html {
   scroll-behavior: smooth;
-  scroll-padding-top: 100px;
+  /* Fixed header: anchor + scrollIntoView land section titles below the nav */
+  scroll-padding-top: 7rem;
 }
 
 body {
@@ -219,10 +220,6 @@ section h2 {
 .services-page .services,
 .services-page .booking {
   padding-top: 6rem;
-}
-
-.home-services {
-  scroll-margin-top: 100px;
 }
 
 .home-services-intro {

@@ -33,6 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   initMobileMenu();
+  initInPageHashScrollOnLoad();
   initNavScroll();
   initDatePicker();
   initBookingForm();
@@ -128,11 +129,22 @@ function initMobileMenu() {
   }
 }
 
-// Nav scroll: ensure sections land at top (below fixed header) on mobile and desktop
-function initNavScroll() {
-  const header = document.querySelector('.header');
-  const headerOffset = () => (header ? header.offsetHeight : 80);
+/** Direct visits (e.g. index.html#contact): re-align after layout so “Get In Touch” clears the fixed header */
+function initInPageHashScrollOnLoad() {
+  const h = window.location.hash;
+  if (!h || h.length < 2 || h === '#book') return;
+  const id = decodeURIComponent(h.slice(1));
+  const el = document.getElementById(id);
+  if (!el) return;
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      el.scrollIntoView({ block: 'start', behavior: 'auto' });
+    });
+  });
+}
 
+// Nav scroll: scrollIntoView respects html scroll-padding-top (fixed header)
+function initNavScroll() {
   document.querySelectorAll('a[href^="#"]').forEach((link) => {
     const href = link.getAttribute('href');
     if (href === '#') return;
@@ -147,8 +159,9 @@ function initNavScroll() {
       if (nav) nav.classList.remove('open');
 
       requestAnimationFrame(() => {
-        const y = target.getBoundingClientRect().top + window.scrollY - headerOffset();
-        window.scrollTo({ top: y, behavior: 'smooth' });
+        requestAnimationFrame(() => {
+          target.scrollIntoView({ block: 'start', behavior: 'smooth' });
+        });
       });
       history.pushState(null, '', href);
     });
