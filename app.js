@@ -3,17 +3,35 @@
  */
 
 document.addEventListener('DOMContentLoaded', () => {
-  const stored = sessionStorage.getItem('booking-service');
-  if (window.location.hash === '#book') {
-    if (stored) {
-      const sel = document.getElementById('service');
-      if (sel) sel.value = stored;
+  if (window.location.hash === '#book' && !document.getElementById('booking-form')) {
+    window.location.replace('book.html');
+    return;
+  }
+
+  const bookingForm = document.getElementById('booking-form');
+  if (bookingForm) {
+    const sel = document.getElementById('service');
+    const params = new URLSearchParams(window.location.search);
+    const q = params.get('service');
+    if (q && sel) {
+      try {
+        sel.value = decodeURIComponent(q);
+      } catch (_) {}
+      history.replaceState(null, '', window.location.pathname);
       sessionStorage.removeItem('booking-service');
     } else {
+      const stored = sessionStorage.getItem('booking-service');
+      if (stored && sel) {
+        sel.value = stored;
+        sessionStorage.removeItem('booking-service');
+      }
+    }
+    if (window.location.hash === '#book') {
       window.scrollTo(0, 0);
       history.replaceState(null, '', window.location.pathname + window.location.search);
     }
   }
+
   initMobileMenu();
   initNavScroll();
   initDatePicker();
@@ -39,7 +57,6 @@ function initServiceBookButtons() {
 
       if (bookSection) {
         if (serviceSelect && serviceValue) serviceSelect.value = serviceValue;
-        window.location.hash = 'book';
         const y = bookSection.getBoundingClientRect().top + window.scrollY - headerOffset();
         window.scrollTo({ top: y, behavior: 'smooth' });
         const formRow = serviceSelect?.closest('.form-row');
@@ -52,7 +69,7 @@ function initServiceBookButtons() {
         }
       } else {
         if (serviceValue) sessionStorage.setItem('booking-service', serviceValue);
-        window.location.href = 'index.html#book';
+        window.location.href = 'book.html';
       }
     });
   });
@@ -120,7 +137,7 @@ function initNavScroll() {
     const href = link.getAttribute('href');
     if (href === '#') return;
     const targetId = href.slice(1);
-    if (targetId === 'book') return; // handled by initBookingScrollAndHighlight
+    if (targetId === 'book') return;
     const target = document.getElementById(targetId);
     if (!target) return;
 

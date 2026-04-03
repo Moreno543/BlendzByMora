@@ -216,8 +216,28 @@ section h2 {
   background: var(--color-bg-alt);
 }
 
-.services-page .services {
+.services-page .services,
+.services-page .booking {
   padding-top: 6rem;
+}
+
+.home-services {
+  scroll-margin-top: 100px;
+}
+
+.home-services-intro {
+  max-width: 40rem;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.home-services-cta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  justify-content: center;
+  align-items: center;
+  margin-top: 2.5rem;
 }
 
 .bucket-grid {

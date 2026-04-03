@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Book Your Appointment | Blendz By Mora – Las Vegas Makeup Artist</title>
+  <meta name="description" content="Book a makeup appointment with Blendz By Mora in Las Vegas. Soft glam, full glam, and bridal packages. Available 8am–6pm; last booking 4pm.">
+  <link rel="canonical" href="https://blendzbymora.com/book.html">
+  <link rel="icon" href="https://blendzbymora.com/assets/profile.png" type="image/png" sizes="48x48">
+  <link rel="icon" href="https://blendzbymora.com/assets/profile.png" type="image/png" sizes="192x192">
+  <link rel="apple-touch-icon" href="https://blendzbymora.com/assets/profile.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/themes/dark.css">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="header">
+    <div class="header-content">
+      <a href="index.html" class="logo-link">
+        <img src="assets/profile.png" alt="Blendz By Mora" class="profile-pic">
+        <span class="brand-name">BLENDZ BY MORA</span>
+      </a>
+      <nav class="nav">
+        <a href="index.html#services">Services</a>
+        <a href="index.html#about">About</a>
+        <a href="index.html#reviews">Reviews</a>
+        <a href="faq.html">FAQ</a>
+        <a href="index.html#contact">Contact</a>
+        <a href="book.html" class="nav-book nav-current">Book Now</a>
+      </nav>
+      <button class="mobile-menu-btn" aria-label="Toggle menu">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </header>
+
+  <main class="services-page">
+    <section id="book" class="booking">
+      <h2>Book Your Appointment</h2>
+      <p class="booking-intro">Available 8am–6pm Monday thru Sunday. Last booking at 4pm.</p>
+      <div class="booking-container">
+        <form id="booking-form" class="booking-form">
+          <div class="form-row">
+            <label for="service">Service</label>
+            <select id="service" name="service" required>
+              <option value="">Select a service</option>
+              <optgroup label="Glams">
+                <option value="Soft Glam - $100">Soft Glam — $100</option>
+                <option value="Full Glam - $150">Full Glam — $150</option>
+              </optgroup>
+              <optgroup label="Bridal">
+                <option value="Mother of the Bride & Mother of the Groom Glam - $100 each">Mother of the Bride & Mother of the Groom Glam — $100 each</option>
+                <option value="Bridesmaid Glam - $125">Bridesmaid Glam — $125</option>
+                <option value="Day-of Bridal Makeup - $200">Day-of Bridal Makeup — $200</option>
+                <option value="Bridal Glam + Bridal Trial + Custom Touch Up Kit - $350">Bridal Glam + Bridal Trial + Custom Touch Up Kit — $350</option>
+                <option value="Bridal Glam + Rehearsal Dinner Glam - $450">Bridal Glam + Rehearsal Dinner Glam — $450</option>
+                <option value="Bridal Trial + Rehearsal Dinner Glam + Day of Bridal Glam + Custom Touch-up Kit - $600">Bridal Trial + Rehearsal Dinner Glam + Day of Bridal Glam + Custom Touch-up Kit — $600</option>
+              </optgroup>
+            </select>
+          </div>
+          <div class="form-row">
+            <label for="date">Date</label>
+            <div class="date-input-wrapper">
+              <input type="text" id="date" name="date" required placeholder="Click to open calendar" readonly>
+              <span class="calendar-icon" aria-hidden="true">📅</span>
+            </div>
+          </div>
+          <div class="form-row">
+            <label for="time">Available Time</label>
+            <select id="time" name="time" required>
+              <option value="">Select a date first</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <label for="name">Name</label>
+            <input type="text" id="name" name="name" required placeholder="Your full name">
+          </div>
+          <div class="form-row">
+            <label for="email">Email</label>
+            <input type="email" id="email" name="email" required placeholder="your@email.com">
+          </div>
+          <div class="form-row">
+            <label for="phone">Phone</label>
+            <input type="tel" id="phone" name="phone" required placeholder="(555) 123-4567">
+          </div>
+          <div class="form-row">
+            <label for="travel">Travel</label>
+            <select id="travel" name="travel">
+              <option value="No">No</option>
+              <option value="Yes">Yes</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <label for="notes">Notes (optional)</label>
+            <textarea id="notes" name="notes" rows="3" placeholder="Any special requests or details..."></textarea>
+          </div>
+          <button type="submit" class="btn btn-submit">Request Appointment</button>
+        </form>
+        <div id="booking-status" class="booking-status"></div>
+      </div>
+      <p class="back-to-services"><a href="index.html#services">← Back to services overview</a></p>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p>© Blendz By Mora. All rights reserved. <a href="terms.html">Terms</a> · <a href="faq.html">FAQ</a> · <a href="privacy.html">Privacy Policy</a></p>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js?v=6"></script>
+  <script src="app.js?v=20"></script>
+</body>
+</html>
