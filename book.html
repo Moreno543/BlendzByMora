@@ -101,6 +101,21 @@
             <label for="notes">Notes (optional)</label>
             <textarea id="notes" name="notes" rows="3" placeholder="Any special requests or details..."></textarea>
           </div>
+
+          <div class="form-row booking-captcha-wrap" aria-live="polite">
+            <label for="booking-captcha-input">Verify you’re human — type the letters shown</label>
+            <div class="booking-captcha-row">
+              <canvas id="booking-captcha-canvas" width="200" height="56" role="img" aria-label="Distorted letters to copy into the field below"></canvas>
+              <button type="button" class="btn-captcha-refresh" id="booking-captcha-refresh">New code</button>
+            </div>
+            <input type="text" id="booking-captcha-input" name="booking_captcha" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Letters from the image" maxlength="5">
+          </div>
+
+          <div class="bbm-honeypot" aria-hidden="true">
+            <label for="bbm-hp-url">Leave this empty</label>
+            <input type="text" id="bbm-hp-url" name="bbm_hp" tabindex="-1" autocomplete="off">
+          </div>
+
           <button type="submit" class="btn btn-submit">Request Appointment</button>
         </form>
         <div id="booking-status" class="booking-status"></div>
@@ -116,6 +131,6 @@
   <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js?v=6"></script>
-  <script src="app.js?v=24"></script>
+  <script src="app.js?v=25"></script>
 </body>
 </html>

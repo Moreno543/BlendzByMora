@@ -662,6 +662,52 @@ function validateBookingContactFields({ name, email, emailConfirm, phone }) {
   };
 }
 
+const BOOKING_CAPTCHA_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+
+function randomBookingCaptchaString(len) {
+  let s = '';
+  for (let i = 0; i < len; i++) {
+    s += BOOKING_CAPTCHA_CHARS[Math.floor(Math.random() * BOOKING_CAPTCHA_CHARS.length)];
+  }
+  return s;
+}
+
+function drawBookingCaptchaCanvas(canvas, text) {
+  if (!canvas || !canvas.getContext || !text) return;
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width;
+  const h = canvas.height;
+  ctx.fillStyle = '#121212';
+  ctx.fillRect(0, 0, w, h);
+  for (let i = 0; i < 8; i++) {
+    ctx.strokeStyle = `rgba(201, 169, 98, ${0.08 + Math.random() * 0.12})`;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(Math.random() * w, Math.random() * h);
+    ctx.lineTo(Math.random() * w, Math.random() * h);
+    ctx.stroke();
+  }
+  for (let i = 0; i < 40; i++) {
+    ctx.fillStyle = `rgba(200, 190, 170, ${0.05 + Math.random() * 0.08})`;
+    ctx.beginPath();
+    ctx.arc(Math.random() * w, Math.random() * h, Math.random() * 1.5 + 0.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  const fontSize = 26;
+  ctx.font = `bold ${fontSize}px Montserrat, system-ui, sans-serif`;
+  ctx.textBaseline = 'middle';
+  for (let i = 0; i < text.length; i++) {
+    ctx.save();
+    const x = 18 + i * 34;
+    const y = h / 2 + (Math.random() - 0.5) * 10;
+    ctx.translate(x, y);
+    ctx.rotate((Math.random() - 0.5) * 0.55);
+    ctx.fillStyle = `rgba(230, 210, 170, ${0.75 + Math.random() * 0.25})`;
+    ctx.fillText(text[i], 0, 0);
+    ctx.restore();
+  }
+}
+
 // Booking form submit
 /** Public IP as seen by Netlify; empty if unavailable (e.g. static file open, or function cold). */
 async function fetchClientIpForBooking() {
@@ -685,6 +731,25 @@ function initBookingForm() {
   const form = document.getElementById('booking-form');
   const status = document.getElementById('booking-status');
   if (!form || !status) return;
+
+  let bookingCaptchaExpected = '';
+
+  function refreshBookingCaptcha() {
+    bookingCaptchaExpected = randomBookingCaptchaString(5);
+    const canvas = document.getElementById('booking-captcha-canvas');
+    drawBookingCaptchaCanvas(canvas, bookingCaptchaExpected);
+    const input = document.getElementById('booking-captcha-input');
+    if (input) input.value = '';
+  }
+
+  document.getElementById('booking-captcha-refresh')?.addEventListener('click', (ev) => {
+    ev.preventDefault();
+    refreshBookingCaptcha();
+  });
+
+  if (document.getElementById('booking-captcha-canvas')) {
+    refreshBookingCaptcha();
+  }
 
   // On mobile: scroll to first invalid field and highlight when validation fails
   let firstInvalidHandled = false;
@@ -719,6 +784,29 @@ function initBookingForm() {
       status.textContent = contact.message;
       status.style.display = 'block';
       return;
+    }
+
+    const hp = (form.querySelector('[name="bbm_hp"]')?.value || '').trim();
+    if (hp) {
+      status.className = 'booking-status error';
+      status.textContent = 'Unable to send this request. Please try again.';
+      status.style.display = 'block';
+      return;
+    }
+
+    if (document.getElementById('booking-captcha-input')) {
+      const typed = (document.getElementById('booking-captcha-input').value || '')
+        .trim()
+        .toUpperCase()
+        .replace(/\s/g, '');
+      if (!typed || typed !== bookingCaptchaExpected) {
+        status.className = 'booking-status error';
+        status.textContent =
+          'The letters didn’t match the image. Try again or tap “New code”.';
+        status.style.display = 'block';
+        refreshBookingCaptcha();
+        return;
+      }
     }
 
     let notes = form.notes.value || '';
@@ -839,6 +927,9 @@ function initBookingForm() {
       status.textContent = 'Your appointment request has been submitted! We\'ll confirm via email or phone.';
       form.reset();
       if (flatpickrInstance) flatpickrInstance.clear();
+      if (document.getElementById('booking-captcha-canvas')) {
+        refreshBookingCaptcha();
+      }
     } catch (err) {
       status.className = 'booking-status error';
       status.textContent = 'Something went wrong. Please email BlendzByMora@gmail.com to book.';
