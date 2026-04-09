@@ -542,6 +542,126 @@ function initTravelNotes() {
   });
 }
 
+// Booking form — contact validation (reduces fake / mistyped email & phone)
+const BOOKING_DISPOSABLE_EMAIL_DOMAINS = new Set([
+  'mailinator.com',
+  'tempmail.com',
+  'temp-mail.org',
+  'guerrillamail.com',
+  'yopmail.com',
+  '10minutemail.com',
+  'trashmail.com',
+  'maildrop.cc',
+  'sharklasers.com',
+  'getnada.com',
+  'mohmal.com',
+  'fakeinbox.com',
+  'dispostable.com',
+  'throwaway.email',
+  'temp-mail.io',
+  'emailondeck.com',
+]);
+
+function normalizeUsPhoneDigits(input) {
+  const d = String(input || '').replace(/\D/g, '');
+  if (d.length === 11 && d.startsWith('1')) return d.slice(1);
+  if (d.length === 10) return d;
+  return null;
+}
+
+function validateUsPhoneNanp(digits) {
+  if (!digits || digits.length !== 10) return false;
+  if (new Set(digits).size === 1) return false;
+  if (digits[0] === '0' || digits[0] === '1') return false;
+  if (digits[3] === '0' || digits[3] === '1') return false;
+  return true;
+}
+
+function formatUsPhonePretty(digits) {
+  return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+}
+
+function validateBookingEmail(raw) {
+  const email = String(raw || '')
+    .trim()
+    .toLowerCase();
+  if (!email || email.length > 254) return { ok: false, message: 'Enter a valid email address.' };
+  const at = email.indexOf('@');
+  if (at < 1) return { ok: false, message: 'Enter a valid email address.' };
+  const local = email.slice(0, at);
+  const domain = email.slice(at + 1);
+  if (!local || !domain || domain.includes('..') || domain.startsWith('.') || domain.endsWith('.')) {
+    return { ok: false, message: 'Enter a valid email address.' };
+  }
+  const labels = domain.split('.');
+  if (labels.length < 2) {
+    return { ok: false, message: 'Use an email with a real domain (e.g. gmail.com).' };
+  }
+  const tld = labels[labels.length - 1];
+  if (tld.length < 2 || !/^[a-z]+$/i.test(tld)) {
+    return { ok: false, message: 'Use a real email address (the part after @ needs a normal domain).' };
+  }
+  if (labels.length === 2 && /^[0-9]+$/.test(labels[0])) {
+    return {
+      ok: false,
+      message: 'That email doesn’t look valid. Use a real provider (Gmail, iCloud, Yahoo, etc.).',
+    };
+  }
+  if (BOOKING_DISPOSABLE_EMAIL_DOMAINS.has(domain)) {
+    return { ok: false, message: 'Please use a personal or work email, not a temporary inbox.' };
+  }
+  if (/^example\.(com|org|net)$/i.test(domain) || domain === 'localhost') {
+    return { ok: false, message: 'Enter a real email you check regularly.' };
+  }
+  if (!/^[a-z0-9._%+\-]+$/i.test(local) || local.length > 64) {
+    return { ok: false, message: 'Enter a valid email address.' };
+  }
+  return { ok: true, email };
+}
+
+function validateBookingName(raw) {
+  const name = String(raw || '')
+    .trim()
+    .replace(/\s+/g, ' ');
+  if (name.length < 2 || name.length > 120) {
+    return { ok: false, message: 'Please enter your full name.' };
+  }
+  const letters = name.replace(/[^a-zA-Z\u00C0-\u024F]/g, '');
+  if (letters.length < 2) {
+    return { ok: false, message: 'Please enter a real name (letters).' };
+  }
+  return { ok: true, name };
+}
+
+function validateBookingContactFields({ name, email, emailConfirm, phone }) {
+  const n = validateBookingName(name);
+  if (!n.ok) return n;
+  const e = validateBookingEmail(email);
+  if (!e.ok) return e;
+  const confirmTrim = String(emailConfirm ?? '')
+    .trim()
+    .toLowerCase();
+  if (confirmTrim !== e.email) {
+    return { ok: false, message: 'Email and “Confirm email” must match.' };
+  }
+  const digits = normalizeUsPhoneDigits(phone);
+  if (!digits) {
+    return { ok: false, message: 'Enter a valid U.S. phone number (10 digits, or 11 starting with 1).' };
+  }
+  if (!validateUsPhoneNanp(digits)) {
+    return {
+      ok: false,
+      message: 'That U.S. phone number doesn’t look valid. Check the area code and number.',
+    };
+  }
+  return {
+    ok: true,
+    email: e.email,
+    phoneFormatted: formatUsPhonePretty(digits),
+    nameDisplay: n.name,
+  };
+}
+
 // Booking form submit
 /** Public IP as seen by Netlify; empty if unavailable (e.g. static file open, or function cold). */
 async function fetchClientIpForBooking() {
@@ -588,6 +708,19 @@ function initBookingForm() {
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
 
+    const contact = validateBookingContactFields({
+      name: form.name.value,
+      email: form.email.value,
+      emailConfirm: document.getElementById('email-confirm')?.value ?? form.email.value,
+      phone: form.phone.value,
+    });
+    if (!contact.ok) {
+      status.className = 'booking-status error';
+      status.textContent = contact.message;
+      status.style.display = 'block';
+      return;
+    }
+
     let notes = form.notes.value || '';
     if (form.travel?.value === 'Yes') {
       notes = 'Travel requested. ' + notes;
@@ -597,9 +730,9 @@ function initBookingForm() {
       service: form.service.value,
       date: form.date.value,
       time: form.time.value,
-      name: form.name.value,
-      email: form.email.value,
-      phone: form.phone.value,
+      name: contact.nameDisplay,
+      email: contact.email,
+      phone: contact.phoneFormatted,
       travel: form.travel?.value || 'No',
       notes,
     };

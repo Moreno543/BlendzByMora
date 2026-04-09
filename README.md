@@ -78,7 +78,7 @@ CREATE POLICY "Allow anonymous select reviews" ON reviews
    - Project URL
    - `anon` public key
 
-4. Paste them into `config.js`:
+4. Paste them into `config.js` (the booking form also validates email — including a confirm field and common throwaway domains — and U.S. phone numbers using standard NANP rules, in the browser before submit):
    ```js
    SUPABASE_URL: 'https://xxxxx.supabase.co',
    SUPABASE_ANON_KEY: 'your-anon-key',

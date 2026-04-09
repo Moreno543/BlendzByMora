@@ -80,11 +80,15 @@
           </div>
           <div class="form-row">
             <label for="email">Email</label>
-            <input type="email" id="email" name="email" required placeholder="your@email.com">
+            <input type="email" id="email" name="email" required autocomplete="email" placeholder="your@email.com">
+          </div>
+          <div class="form-row">
+            <label for="email-confirm">Confirm email</label>
+            <input type="email" id="email-confirm" name="email_confirm" required autocomplete="email" placeholder="Re-enter your email">
           </div>
           <div class="form-row">
             <label for="phone">Phone</label>
-            <input type="tel" id="phone" name="phone" required placeholder="(555) 123-4567">
+            <input type="tel" id="phone" name="phone" required autocomplete="tel" placeholder="(555) 123-4567" inputmode="tel">
           </div>
           <div class="form-row">
             <label for="travel">Travel</label>
@@ -112,6 +116,6 @@
   <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js?v=6"></script>
-  <script src="app.js?v=23"></script>
+  <script src="app.js?v=24"></script>
 </body>
 </html>
