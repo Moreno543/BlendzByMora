@@ -37,6 +37,7 @@ CREATE TABLE bookings (
   phone TEXT NOT NULL,
   travel TEXT DEFAULT 'No',
   notes TEXT,
+  client_ip TEXT,
   reminder_sent_at TIMESTAMPTZ,
   sms_confirmed_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT NOW()
@@ -50,6 +51,8 @@ CREATE POLICY "Allow anonymous insert" ON bookings
 
 CREATE POLICY "Allow anonymous select" ON bookings
   FOR SELECT USING (true);
+
+-- If you created bookings before client_ip existed, run: sql/bookings_client_ip.sql
 
 -- Reviews table
 CREATE TABLE reviews (

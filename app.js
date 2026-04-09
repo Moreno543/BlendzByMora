@@ -543,6 +543,24 @@ function initTravelNotes() {
 }
 
 // Booking form submit
+/** Public IP as seen by Netlify; empty if unavailable (e.g. static file open, or function cold). */
+async function fetchClientIpForBooking() {
+  try {
+    const res = await fetch('/.netlify/functions/client-ip', {
+      method: 'GET',
+      credentials: 'same-origin',
+    });
+    if (!res.ok) return '';
+    const data = await res.json();
+    const ip = typeof data.ip === 'string' ? data.ip.trim() : '';
+    if (!ip || ip.length > 45) return '';
+    if (!/^[\d.a-fA-F:]+$/i.test(ip)) return '';
+    return ip;
+  } catch {
+    return '';
+  }
+}
+
 function initBookingForm() {
   const form = document.getElementById('booking-form');
   const status = document.getElementById('booking-status');
@@ -621,12 +639,18 @@ function initBookingForm() {
     }
 
     try {
+      const clientIp = await fetchClientIpForBooking();
+      const bookingPayload = {
+        ...payload,
+        ...(clientIp ? { client_ip: clientIp } : {}),
+      };
+
       // 1. Save to Supabase (prevents double booking)
       if (hasSupabase) {
         const supabaseClient = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
         const { data: inserted, error } = await supabaseClient
           .from('bookings')
-          .insert([payload])
+          .insert([bookingPayload])
           .select('id')
           .single();
         if (error) throw error;
@@ -654,7 +678,7 @@ function initBookingForm() {
       // 2. Send to Formspree (email to you + CC copy to customer — same details as your notification)
       if (hasFormspree) {
         const formData = new FormData();
-        const firstName = (payload.name || '').trim().split(/\s+/)[0] || 'there';
+        const firstName = (bookingPayload.name || '').trim().split(/\s+/)[0] || 'there';
         const confirmationCopy =
           `Hello ${firstName},\n\n` +
           'Thank you for submitting an appointment request with Blendz By Mora. Below is a copy of the services you requested for your records.\n\n' +
@@ -662,13 +686,13 @@ function initBookingForm() {
           'Kind regards,\nBlendz By Mora';
         // Shown first in Formspree emails (you + customer CC) — reads as a professional cover note above the fields
         formData.append('Appointment confirmation', confirmationCopy);
-        Object.entries(payload).forEach(([k, v]) => formData.append(k, v));
+        Object.entries(bookingPayload).forEach(([k, v]) => formData.append(k, v));
         formData.append(
           '_subject',
-          `Blendz By Mora — appointment request received (${payload.date} · ${payload.time})`
+          `Blendz By Mora — appointment request received (${bookingPayload.date} · ${bookingPayload.time})`
         );
-        if (payload.email && payload.email.trim()) {
-          formData.append('_cc', payload.email.trim());
+        if (bookingPayload.email && bookingPayload.email.trim()) {
+          formData.append('_cc', bookingPayload.email.trim());
         }
         const res = await fetch(`https://formspree.io/f/${CONFIG.FORMSPREE_BOOKING_ID}`, {
           method: 'POST',

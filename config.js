@@ -16,6 +16,7 @@
  *        email TEXT NOT NULL,
  *        phone TEXT NOT NULL,
  *        notes TEXT,
+ *        client_ip TEXT,
  *        reminder_sent_at TIMESTAMPTZ,
  *        created_at TIMESTAMPTZ DEFAULT NOW()
  *      );
