@@ -519,6 +519,38 @@ section h2 {
   border-color: var(--color-accent);
 }
 
+.booking-sms-consent {
+  margin-bottom: 1.25rem;
+}
+
+.booking-consent-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  cursor: pointer;
+  font-size: 0.8rem;
+  line-height: 1.55;
+  color: var(--color-text-muted);
+  font-weight: 400;
+}
+
+.booking-consent-label input[type='checkbox'] {
+  width: auto;
+  min-width: 1rem;
+  margin-top: 0.2rem;
+  flex-shrink: 0;
+  accent-color: var(--color-accent);
+}
+
+.booking-consent-text strong {
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+.booking-consent-label a {
+  color: var(--color-accent);
+}
+
 .booking-captcha-wrap {
   margin-bottom: 1.25rem;
 }

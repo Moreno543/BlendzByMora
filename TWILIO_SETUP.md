@@ -21,11 +21,15 @@ ALTER TABLE bookings ADD COLUMN IF NOT EXISTS reminder_sent_at TIMESTAMPTZ;
 
 -- ── B) SMS “Reply YES” → timestamp on the booking (safe to run again) ─────
 ALTER TABLE bookings ADD COLUMN IF NOT EXISTS sms_confirmed_at TIMESTAMPTZ;
+
+-- ── C) A2P 10DLC — optional SMS opt-in on the booking form (not required to submit) ──
+ALTER TABLE bookings ADD COLUMN IF NOT EXISTS sms_consent BOOLEAN NOT NULL DEFAULT false;
 ```
 
 3. You should see **Success**.  
    - **`reminder_sent_at`** — `NULL` until a reminder is sent; then the job won’t send twice for that row.  
-   - **`sms_confirmed_at`** — `NULL` until the client texts **YES**; then set to the time of that message. Filter **SMS confirmed** / **Not confirmed** on **`admin.html`**.
+   - **`sms_confirmed_at`** — `NULL` until the client texts **YES**; then set to the time of that message. Filter **SMS confirmed** / **Not confirmed** on **`admin.html`**.  
+   - **`sms_consent`** — `true` only if the customer checked the SMS consent box; **`booking-sms`** and **`booking-reminders`** send only when `true` (see `book.html` + Privacy/Terms).
 
 *(Optional audit log: `sql/booking_confirmations.sql` creates a separate table — not required for the site or admin.)*
 
@@ -97,6 +101,16 @@ After vetting: confirm your **sending number** is still in the **Messaging Servi
 - ~24h reminder: `netlify/functions/booking-reminders.mjs` → `buildReminderBody`  
 - Inbound auto-replies: `netlify/functions/twilio-inbound-sms.mjs`
 
+Messages include **HELP** / **STOP** language for carrier / A2P sample requirements. When you **resubmit your 10DLC campaign** in Twilio, use samples consistent with production, for example:
+
+- **Transactional / confirmation (sample):**  
+  `Blendz By Mora: Hi [Name]! We received your request — [Service] on [Date] at [Time]. We'll confirm by email or phone. Reminder ~24h before appt. Msg & data rates may apply. Reply HELP for help, STOP to opt out.`
+
+- **Reminder (sample):**  
+  `Blendz By Mora: Hello [Name]. Reminder: your [Service] is on [Date] at [Time] (~24h). Reply YES to confirm. Msg & data rates may apply. Reply HELP for help, STOP to opt out.`
+
+Opt-in on the live site: **`book.html`** optional checkbox (not pre-checked, not required) + links to **Privacy** and **Terms**.
+
 ---
 
 ## Troubleshooting
@@ -104,6 +118,7 @@ After vetting: confirm your **sending number** is still in the **Messaging Servi
 | Issue | What to check |
 |-------|----------------|
 | No SMS at all | Env vars on Netlify, A2P/campaign, number in Messaging Service, Twilio error logs |
+| No confirmation after booking | Customer must **check** the SMS opt-in box on **`book.html`**; **`sms_consent`** must be `true` in **`bookings`** (run **`sql/sms_consent.sql`** if the column is missing) |
 | 30034 / undelivered | Campaign not linked to the **same** Messaging Service as the sender number |
 | Reminder never sends | `reminder_sent_at` column exists; appointment ~23–25h away in **America/Los_Angeles**; hourly cron ran |
 | YES does nothing | Inbound webhook URL exact **https** host/path; column **`sms_confirmed_at`** on **`bookings`** exists; phone on booking matches sender digits |

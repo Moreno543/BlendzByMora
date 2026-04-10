@@ -193,7 +193,7 @@
             : confirmFilter === 'unconfirmed'
               ? ' Every appointment in this range is SMS-confirmed, or there are none.'
               : '';
-        tbody.innerHTML = `<tr><td colspan="10" class="admin-empty" data-label="">No appointments in this date range.${escapeHtml(hint)}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="11" class="admin-empty" data-label="">No appointments in this date range.${escapeHtml(hint)}</td></tr>`;
         return;
       }
 
@@ -213,6 +213,7 @@
           <td data-label="Travel" class="admin-nowrap">${cell(r.travel || '')}</td>
           <td data-label="Notes" class="admin-notes admin-td-notes">${notesCell(r.notes)}</td>
           <td data-label="IP" class="admin-nowrap">${cell(r.client_ip || '')}</td>
+          <td data-label="SMS opt-in" class="admin-nowrap">${cell(r.sms_consent ? 'Yes' : 'No')}</td>
           <td data-label="SMS YES" class="admin-nowrap">${smsYesCell(r)}</td>
         `;
         tbody.appendChild(tr);

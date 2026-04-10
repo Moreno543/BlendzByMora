@@ -27,9 +27,9 @@ function buildReminderBody(row) {
   const service = String(row.service || 'your appointment').slice(0, 60);
   const date = String(row.date || '');
   const time = String(row.time || '');
-  let text = `Blendz By Mora: Hello ${first}. This is a reminder that your ${service} is scheduled for ${date} at ${time} — approximately 24 hours from now. Please reply YES to confirm.`;
+  let text = `Blendz By Mora: Hello ${first}. Reminder: your ${service} is on ${date} at ${time} (~24h). Reply YES to confirm. Msg & data rates may apply. Reply HELP for help, STOP to opt out.`;
   if (text.length > 320) {
-    text = `Blendz By Mora: Hello ${first}. Reminder: ${service} on ${date} at ${time} (~24h). Please reply YES to confirm.`;
+    text = `Blendz By Mora: Hello ${first}. Reminder: ${service} on ${date} at ${time} (~24h). Reply YES to confirm. Reply HELP for help, STOP to opt out.`;
   }
   if (text.length > 320) {
     text = text.slice(0, 317) + '...';

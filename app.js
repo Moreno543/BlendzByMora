@@ -868,6 +868,7 @@ function initBookingForm() {
       phone: contact.phoneFormatted,
       travel: form.travel?.value || 'No',
       notes,
+      sms_consent: document.getElementById('sms-consent')?.checked === true,
     };
 
     const normDate = normalizeDateStr(payload.date);

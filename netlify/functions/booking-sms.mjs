@@ -25,9 +25,9 @@ function buildBody(row) {
   const service = String(row.service || 'Appointment').slice(0, 80);
   const date = String(row.date || '');
   const time = String(row.time || '');
-  let text = `Blendz By Mora: Hi ${first}! We received your request — ${service} on ${date} at ${time}. We'll confirm by email or phone. You'll get a reminder ~24h before your appointment. Thanks!`;
+  let text = `Blendz By Mora: Hi ${first}! We received your request — ${service} on ${date} at ${time}. We'll confirm by email or phone. Reminder ~24h before appt. Msg & data rates may apply. Reply HELP for help, STOP to opt out.`;
   if (text.length > 320) {
-    text = `Blendz By Mora: Hi ${first}! Request received: ${service} on ${date} at ${time}. We'll confirm soon. Reminder ~24h before your appointment.`;
+    text = `Blendz By Mora: Hi ${first}! Request: ${service} on ${date} at ${time}. We'll confirm soon. Msg & data rates may apply. Reply HELP for help, STOP to opt out.`;
   }
   if (text.length > 320) {
     text = text.slice(0, 317) + '...';
@@ -87,13 +87,20 @@ export default async function handler(request) {
   });
   const { data: row, error: qerr } = await supabase
     .from('bookings')
-    .select('id, name, phone, service, date, time, email')
+    .select('id, name, phone, service, date, time, email, sms_consent')
     .eq('id', bookingId)
     .maybeSingle();
 
   if (qerr || !row) {
     return new Response(JSON.stringify({ error: 'Booking not found' }), {
       status: 404,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+
+  if (row.sms_consent !== true) {
+    return new Response(JSON.stringify({ ok: true, sent: false, reason: 'no_sms_consent' }), {
+      status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }

@@ -156,7 +156,7 @@ export default async function handler(request) {
 
   let query = supabase
     .from('bookings')
-    .select('id, date, time, service, name, email, phone, travel, notes, created_at, sms_confirmed_at, client_ip')
+    .select('id, date, time, service, name, email, phone, travel, notes, created_at, sms_confirmed_at, client_ip, sms_consent')
     .gte('date', start)
     .lte('date', end);
 

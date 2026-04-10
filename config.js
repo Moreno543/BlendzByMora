@@ -17,6 +17,7 @@
  *        phone TEXT NOT NULL,
  *        notes TEXT,
  *        client_ip TEXT,
+ *        sms_consent BOOLEAN DEFAULT false,
  *        reminder_sent_at TIMESTAMPTZ,
  *        created_at TIMESTAMPTZ DEFAULT NOW()
  *      );

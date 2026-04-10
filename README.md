@@ -38,6 +38,7 @@ CREATE TABLE bookings (
   travel TEXT DEFAULT 'No',
   notes TEXT,
   client_ip TEXT,
+  sms_consent BOOLEAN NOT NULL DEFAULT false,
   reminder_sent_at TIMESTAMPTZ,
   sms_confirmed_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT NOW()
@@ -53,6 +54,7 @@ CREATE POLICY "Allow anonymous select" ON bookings
   FOR SELECT USING (true);
 
 -- If you created bookings before client_ip existed, run: sql/bookings_client_ip.sql
+-- A2P opt-in (optional checkbox on book.html): sql/sms_consent.sql
 
 -- Reviews table
 CREATE TABLE reviews (
