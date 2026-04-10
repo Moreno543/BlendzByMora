@@ -727,6 +727,39 @@ async function fetchClientIpForBooking() {
   }
 }
 
+/** Twilio Lookup (server-side): real / routable number — no SMS code. */
+async function verifyPhoneWithTwilioLookup(phoneFormatted) {
+  const digits = normalizeUsPhoneDigits(phoneFormatted);
+  if (!digits) {
+    return { ok: false, message: 'Enter a valid U.S. phone number.' };
+  }
+  const e164 = `+1${digits}`;
+  try {
+    const res = await fetch('/.netlify/functions/lookup-phone', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ phone: e164 }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (data.ok === true) {
+      return { ok: true };
+    }
+    if (typeof data.message === 'string' && data.message.trim()) {
+      return { ok: false, message: data.message.trim() };
+    }
+    return {
+      ok: false,
+      message: 'Could not verify phone. Please try again.',
+    };
+  } catch (err) {
+    console.warn('[Blendz] lookup-phone:', err);
+    return {
+      ok: false,
+      message: 'Could not verify phone. Please use the live booking page or try again.',
+    };
+  }
+}
+
 function initBookingForm() {
   const form = document.getElementById('booking-form');
   const status = document.getElementById('booking-status');
@@ -807,6 +840,18 @@ function initBookingForm() {
         refreshBookingCaptcha();
         return;
       }
+    }
+
+    status.className = 'booking-status loading';
+    status.textContent = 'Verifying phone number…';
+    status.style.display = 'block';
+
+    const lookupResult = await verifyPhoneWithTwilioLookup(contact.phoneFormatted);
+    if (!lookupResult.ok) {
+      status.className = 'booking-status error';
+      status.textContent = lookupResult.message;
+      status.style.display = 'block';
+      return;
     }
 
     let notes = form.notes.value || '';

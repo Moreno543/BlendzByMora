@@ -45,6 +45,7 @@ ALTER TABLE bookings ADD COLUMN IF NOT EXISTS sms_confirmed_at TIMESTAMPTZ;
 | **`TWILIO_FROM_NUMBER`** | Yes | Your Twilio number in **E.164**, e.g. `+17253301234` (Messaging-capable, on your A2P campaign / Messaging Service) |
 | **`TWILIO_OWNER_NOTIFY_PHONE`** | No | **Your** cell in E.164 — get an SMS when someone texts **YES** (uses your Twilio number as sender) |
 | **`TWILIO_SMS_DISABLED`** | No | Set to `true` to turn **off** all outbound/inbound SMS processing in functions (local testing) |
+| **`TWILIO_LOOKUP_DISABLED`** | No | Set to `true` to **skip** [Twilio Lookup](https://www.twilio.com/docs/lookup) on the booking form (saves API cost while testing locally). **Production:** omit this or leave unset so phone numbers are validated as real/routable (no SMS code — same flow as email checks). Uses the same **`TWILIO_ACCOUNT_SID`** and **`TWILIO_AUTH_TOKEN`**. |
 
 3. **Save**, then trigger a **new deploy** (or **Clear cache and deploy**) so functions pick up env vars.
 
@@ -79,7 +80,7 @@ After vetting: confirm your **sending number** is still in the **Messaging Servi
 
 ## Step 5 — Deploy and test
 
-1. Push the repo; confirm **Netlify** shows **Functions**: `booking-sms`, `booking-reminders`, `twilio-inbound-sms`, `admin-bookings`.  
+1. Push the repo; confirm **Netlify** shows **Functions** including `lookup-phone`, `booking-sms`, `booking-reminders`, `twilio-inbound-sms`, `admin-bookings`.  
 2. **Booking SMS:** Submit a real booking on the **live** site → check **Twilio → Monitor → Logs → Messaging**.  
 3. **Reminder:** After deploy, the scheduler runs **hourly**; a booking **~24h** ahead (Las Vegas slot time) with `reminder_sent_at` null should get **one** reminder.  
 4. **YES:** From the phone on the booking, text **YES** to your Twilio number → **`bookings.sms_confirmed_at`** updates in Supabase; see **`admin.html`** (filter **SMS confirmed**); optional alert to **`TWILIO_OWNER_NOTIFY_PHONE`**.
