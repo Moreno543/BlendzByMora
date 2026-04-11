@@ -765,6 +765,17 @@ function initBookingForm() {
   const status = document.getElementById('booking-status');
   if (!form || !status) return;
 
+  const emailConfirm = document.getElementById('email-confirm');
+  if (emailConfirm?.hasAttribute('readonly')) {
+    emailConfirm.addEventListener(
+      'focusin',
+      () => {
+        emailConfirm.removeAttribute('readonly');
+      },
+      { once: true },
+    );
+  }
+
   let bookingCaptchaExpected = '';
 
   function refreshBookingCaptcha() {
