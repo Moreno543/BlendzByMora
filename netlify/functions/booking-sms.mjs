@@ -117,6 +117,11 @@ export default async function handler(request) {
 
   const messageBody = buildBody(row);
   const auth = Buffer.from(`${sid}:${token}`).toString('base64');
+  if (messagingServiceSid) {
+    console.log('[booking-sms] send via MessagingServiceSid', messagingServiceSid.slice(0, 6) + '…', 'to', to);
+  } else {
+    console.log('[booking-sms] send via From', fromNum ? fromNum.slice(0, 5) + '…' : '(missing)', 'to', to);
+  }
   let params;
   try {
     params = twilioMessageParams({
