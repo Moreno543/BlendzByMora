@@ -970,7 +970,7 @@ function initBookingForm() {
         }
       }
 
-      // 2. Send to Formspree (email to you + CC copy to customer — same details as your notification)
+      // 2. Send to Formspree (email to you + CC copy to customer — same body for both, so omit internal-only fields)
       if (hasFormspree) {
         const formData = new FormData();
         const firstName = (bookingPayload.name || '').trim().split(/\s+/)[0] || 'there';
@@ -981,7 +981,11 @@ function initBookingForm() {
           'Kind regards,\nBlendz By Mora';
         // Shown first in Formspree emails (you + customer CC) — reads as a professional cover note above the fields
         formData.append('Appointment confirmation', confirmationCopy);
-        Object.entries(bookingPayload).forEach(([k, v]) => formData.append(k, v));
+        const omitFromFormspreeEmail = new Set(['sms_consent', 'client_ip']);
+        Object.entries(bookingPayload).forEach(([k, v]) => {
+          if (omitFromFormspreeEmail.has(k)) return;
+          formData.append(k, v === true || v === false ? String(v) : (v ?? ''));
+        });
         formData.append(
           '_subject',
           `Blendz By Mora — appointment request received (${bookingPayload.date} · ${bookingPayload.time})`
