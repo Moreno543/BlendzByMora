@@ -90,6 +90,10 @@ Keep a simple customer list **without** changing the website: a trigger copies e
 1. In **SQL Editor**, open **`sql/customer_contacts.sql`** in this repo, copy all, paste, **Run** once (or use the same block in **`CUSTOMER_CONTACTS.md`**).
 2. View rows in **Table Editor → `customer_contacts`** (not visible to the public site).
 
+### Booking spam limits (optional)
+
+Run **`sql/bookings_rate_limit.sql`** in **SQL Editor** (max **3** inserts per **24 hours** per **`client_ip`** and per **phone number**; optional table **`blocked_booking_ips`** for exact IPs to reject). Add rows in **Table Editor → `blocked_booking_ips`** or via SQL (`INSERT ...`). Edit `max_per_window` in the file if you need a higher cap (e.g. shared Wi‑Fi).
+
 ### SMS reminders & “YES” confirmations (optional)
 
 1. In **SQL Editor**, run **[TWILIO_SETUP.md](./TWILIO_SETUP.md)** Step 1 (adds **`reminder_sent_at`** and **`sms_confirmed_at`** on **`bookings`**), or run:

@@ -931,7 +931,24 @@ function initBookingForm() {
           .insert([bookingPayload])
           .select('id')
           .single();
-        if (error) throw error;
+        if (error) {
+          const em = String(error.message || '');
+          if (em.includes('BLOCKED_IP')) {
+            status.className = 'booking-status error';
+            status.textContent =
+              'This request could not be submitted. Please email BlendzByMora@gmail.com to book.';
+            status.style.display = 'block';
+            return;
+          }
+          if (em.includes('RATE_LIMIT')) {
+            status.className = 'booking-status error';
+            status.textContent =
+              'Too many booking requests from this network or number. Please wait 24 hours or email BlendzByMora@gmail.com.';
+            status.style.display = 'block';
+            return;
+          }
+          throw error;
+        }
         const newId = inserted?.id != null ? String(inserted.id).trim() : '';
         if (newId) {
           fetch('/.netlify/functions/booking-sms', {
