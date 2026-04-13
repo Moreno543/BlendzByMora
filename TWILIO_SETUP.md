@@ -46,7 +46,8 @@ ALTER TABLE bookings ADD COLUMN IF NOT EXISTS sms_consent BOOLEAN NOT NULL DEFAU
 | **`SUPABASE_SERVICE_ROLE_KEY`** | Yes | Supabase → **Project Settings** → **API** → **`service_role`** (secret — never put in `config.js` or Git) |
 | **`TWILIO_ACCOUNT_SID`** | Yes for SMS | Twilio [Console](https://console.twilio.com) dashboard (starts with `AC`) |
 | **`TWILIO_AUTH_TOKEN`** | Yes | Twilio Console — **Account** token (click to reveal) |
-| **`TWILIO_FROM_NUMBER`** | Yes | Your Twilio number in **E.164**, e.g. `+17253301234` (Messaging-capable, on your A2P campaign / Messaging Service) |
+| **`TWILIO_MESSAGING_SERVICE_SID`** | **Recommended** | Twilio → **Messaging** → **Services** → your service (e.g. BlendzByMora) — copy **Messaging Service SID** (starts with `MG`). **Use this for A2P 10DLC:** outbound SMS then go through your approved campaign (fixes many **Undelivered** / **30034** issues when logs show **Service** empty). |
+| **`TWILIO_FROM_NUMBER`** | Yes if no MSID | Your Twilio number in **E.164**, e.g. `+17253301234`. Required when **`TWILIO_MESSAGING_SERVICE_SID`** is not set; if MSID **is** set, the number should still be in the service **Sender pool** (Twilio may pick it automatically). |
 | **`TWILIO_OWNER_NOTIFY_PHONE`** | No | **Your** cell in E.164 — get an SMS when someone texts **YES** (uses your Twilio number as sender) |
 | **`TWILIO_SMS_DISABLED`** | No | Set to `true` to turn **off** all outbound/inbound SMS processing in functions (local testing) |
 | **`TWILIO_LOOKUP_DISABLED`** | No | Set to `true` to **skip** [Twilio Lookup](https://www.twilio.com/docs/lookup) on the booking form (saves API cost while testing locally). **Production:** omit this or leave unset so phone numbers are validated as real/routable (no SMS code — same flow as email checks). Uses the same **`TWILIO_ACCOUNT_SID`** and **`TWILIO_AUTH_TOKEN`**. |
@@ -79,6 +80,8 @@ After you register, Twilio shows **Customer Profile**, **Brand**, and **Campaign
 Check status in **[Twilio A2P / Regulatory Compliance](https://console.twilio.com/us1/develop/sms/regulatory-compliance/a2p-10dlc)**.
 
 After vetting: confirm your **sending number** is still in the **Messaging Service** linked to **this** campaign.
+
+**Netlify:** Set **`TWILIO_MESSAGING_SERVICE_SID`** to that service’s **`MG…`** value so API sends use the Messaging Service (check Twilio **Logs** — the **Service** column should show your service instead of “—”).
 
 ---
 
@@ -119,7 +122,7 @@ Opt-in on the live site: **`book.html`** optional checkbox (not pre-checked, not
 |-------|----------------|
 | No SMS at all | Env vars on Netlify, A2P/campaign, number in Messaging Service, Twilio error logs |
 | No confirmation after booking | Customer must **check** the SMS opt-in box on **`book.html`**; **`sms_consent`** must be `true` in **`bookings`** (run **`sql/sms_consent.sql`** if the column is missing) |
-| 30034 / undelivered | Campaign not linked to the **same** Messaging Service as the sender number |
+| 30034 / undelivered / **Service** empty in logs | Set **`TWILIO_MESSAGING_SERVICE_SID`** on Netlify; keep your number in that service’s **Sender pool** and campaign linked to **that** service |
 | Reminder never sends | `reminder_sent_at` column exists; appointment ~23–25h away in **America/Los_Angeles**; hourly cron ran |
 | YES does nothing | Inbound webhook URL exact **https** host/path; column **`sms_confirmed_at`** on **`bookings`** exists; phone on booking matches sender digits |
 | Inbound 403 | Twilio **signature** — webhook URL in Twilio must match the URL Netlify uses (no wrong subdomain or trailing slash) |

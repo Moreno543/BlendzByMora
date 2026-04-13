@@ -9,6 +9,7 @@ import {
   parseSlotDateTime,
   vegasCalendarDateStr,
 } from './lib/booking-time.mjs';
+import { hasOutboundSender, twilioMessageParams } from './lib/twilio-send.mjs';
 
 /** Send when appointment is between 23h and 25h from now (hourly cron tolerance). */
 const WINDOW_MIN_MS = 23 * 60 * 60 * 1000;
@@ -37,9 +38,14 @@ function buildReminderBody(row) {
   return text;
 }
 
-async function sendTwilioSms({ sid, token, fromNum, to, body }) {
+async function sendTwilioSms({ sid, token, messagingServiceSid, fromNum, to, body }) {
   const auth = Buffer.from(`${sid}:${token}`).toString('base64');
-  const params = new URLSearchParams({ To: to, From: fromNum.trim(), Body: body });
+  const params = twilioMessageParams({
+    to,
+    body,
+    messagingServiceSid,
+    fromNumber: fromNum,
+  });
   const twRes = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`, {
     method: 'POST',
     headers: {
@@ -63,11 +69,12 @@ export default async function handler() {
 
   const sid = process.env.TWILIO_ACCOUNT_SID;
   const token = process.env.TWILIO_AUTH_TOKEN;
-  const fromNum = process.env.TWILIO_FROM_NUMBER;
+  const messagingServiceSid = String(process.env.TWILIO_MESSAGING_SERVICE_SID || '').trim();
+  const fromNum = String(process.env.TWILIO_FROM_NUMBER || '').trim();
   const url = process.env.SUPABASE_URL;
   const skey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-  if (!sid || !token || !fromNum || !url || !skey) {
+  if (!sid || !token || !url || !skey || !hasOutboundSender(messagingServiceSid, fromNum)) {
     console.log('[booking-reminders] skipped: missing env');
     return new Response(JSON.stringify({ ok: true, skipped: true, reason: 'missing_env' }), {
       status: 200,
@@ -122,7 +129,14 @@ export default async function handler() {
     }
 
     const body = buildReminderBody(row);
-    const { ok, twJson } = await sendTwilioSms({ sid, token, fromNum, to, body });
+    const { ok, twJson } = await sendTwilioSms({
+      sid,
+      token,
+      messagingServiceSid,
+      fromNum,
+      to,
+      body,
+    });
     if (!ok) {
       console.error('[booking-reminders] Twilio failed', row.id, twJson);
       errors.push({ id: row.id, message: twJson.message || 'twilio error' });

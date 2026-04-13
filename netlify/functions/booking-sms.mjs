@@ -1,10 +1,11 @@
 /**
  * Send Twilio SMS after a booking is saved (triggered from the site with booking UUID).
- * Env: TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM_NUMBER (E.164),
- *      SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
+ * Env: TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
+ *      TWILIO_MESSAGING_SERVICE_SID (recommended for A2P 10DLC) and/or TWILIO_FROM_NUMBER (E.164)
  * Optional: TWILIO_SMS_DISABLED=true to skip sending (e.g. while testing)
  */
 import { createClient } from '@supabase/supabase-js';
+import { hasOutboundSender, twilioMessageParams } from './lib/twilio-send.mjs';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -56,11 +57,12 @@ export default async function handler(request) {
 
   const sid = process.env.TWILIO_ACCOUNT_SID;
   const token = process.env.TWILIO_AUTH_TOKEN;
-  const fromNum = process.env.TWILIO_FROM_NUMBER;
+  const messagingServiceSid = String(process.env.TWILIO_MESSAGING_SERVICE_SID || '').trim();
+  const fromNum = String(process.env.TWILIO_FROM_NUMBER || '').trim();
   const url = process.env.SUPABASE_URL;
   const skey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-  if (!sid || !token || !fromNum || !url || !skey) {
+  if (!sid || !token || !url || !skey || !hasOutboundSender(messagingServiceSid, fromNum)) {
     return new Response(JSON.stringify({ ok: true, skipped: true, reason: 'missing_env' }), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -115,7 +117,21 @@ export default async function handler(request) {
 
   const messageBody = buildBody(row);
   const auth = Buffer.from(`${sid}:${token}`).toString('base64');
-  const params = new URLSearchParams({ To: to, From: fromNum.trim(), Body: messageBody });
+  let params;
+  try {
+    params = twilioMessageParams({
+      to,
+      body: messageBody,
+      messagingServiceSid,
+      fromNumber: fromNum,
+    });
+  } catch (e) {
+    console.error('[booking-sms]', e);
+    return new Response(JSON.stringify({ ok: false, error: 'Twilio sender not configured' }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
 
   const twRes = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`, {
     method: 'POST',

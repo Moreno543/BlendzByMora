@@ -5,13 +5,14 @@
  * Twilio → Phone Numbers → [number] → A message comes in → Webhook POST:
  *   https://YOUR_DOMAIN/.netlify/functions/twilio-inbound-sms
  *
- * Env: TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM_NUMBER,
+ * Env: TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_MESSAGING_SERVICE_SID and/or TWILIO_FROM_NUMBER,
  *      SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY,
  *      optional TWILIO_OWNER_NOTIFY_PHONE (E.164)
  */
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { createClient } from '@supabase/supabase-js';
 import { vegasTodayYmd, addVegasDays } from './lib/vegas-dates.mjs';
+import { hasOutboundSender, twilioMessageParams } from './lib/twilio-send.mjs';
 
 const CONFIRM_RE = /^(yes|y|confirm|confirmed|ok|okay|si|sí)\s*\.?$/i;
 
@@ -58,9 +59,14 @@ function webhookFullUrl(request) {
   return `${proto}://${host}${u.pathname}`;
 }
 
-async function sendTwilioSms({ sid, token, fromNum, to, body }) {
+async function sendTwilioSms({ sid, token, messagingServiceSid, fromNum, to, body }) {
   const auth = Buffer.from(`${sid}:${token}`).toString('base64');
-  const form = new URLSearchParams({ To: to, From: fromNum, Body: body });
+  const form = twilioMessageParams({
+    to,
+    body,
+    messagingServiceSid,
+    fromNumber: fromNum,
+  });
   const twRes = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`, {
     method: 'POST',
     headers: { Authorization: `Basic ${auth}`, 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -76,12 +82,13 @@ export default async function handler(request) {
 
   const sid = process.env.TWILIO_ACCOUNT_SID;
   const token = process.env.TWILIO_AUTH_TOKEN;
-  const fromNum = process.env.TWILIO_FROM_NUMBER;
+  const messagingServiceSid = String(process.env.TWILIO_MESSAGING_SERVICE_SID || '').trim();
+  const fromNum = String(process.env.TWILIO_FROM_NUMBER || '').trim();
   const supabaseUrl = process.env.SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const ownerNotify = (process.env.TWILIO_OWNER_NOTIFY_PHONE || '').trim();
 
-  if (!sid || !token || !fromNum || !supabaseUrl || !serviceKey) {
+  if (!sid || !token || !supabaseUrl || !serviceKey) {
     console.error('[twilio-inbound-sms] missing env');
     return new Response(twilioXml('Service unavailable.'), {
       status: 200,
@@ -150,16 +157,21 @@ export default async function handler(request) {
     return xml('Could not save confirmation. Please email us.');
   }
 
-  if (ownerNotify) {
+  if (ownerNotify && hasOutboundSender(messagingServiceSid, fromNum)) {
     const summary = `Confirmed: ${match.name} — ${match.service} on ${match.date} ${match.time}. Phone: ${from}`;
-    const { ok, json } = await sendTwilioSms({
-      sid,
-      token,
-      fromNum,
-      to: ownerNotify,
-      body: summary.slice(0, 320),
-    });
-    if (!ok) console.error('[twilio-inbound-sms] owner notify failed', json);
+    try {
+      const { ok, json } = await sendTwilioSms({
+        sid,
+        token,
+        messagingServiceSid,
+        fromNum,
+        to: ownerNotify,
+        body: summary.slice(0, 320),
+      });
+      if (!ok) console.error('[twilio-inbound-sms] owner notify failed', json);
+    } catch (e) {
+      console.error('[twilio-inbound-sms] owner notify', e);
+    }
   }
 
   return xml("Thanks! You're confirmed — we'll see you at your appointment.");
