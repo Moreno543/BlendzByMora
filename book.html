@@ -75,20 +75,20 @@
             </select>
           </div>
           <div class="form-row">
-            <label for="name">Name</label>
-            <input type="text" id="name" name="name" required placeholder="Your full name">
+            <label for="name">Name <span class="booking-required" aria-hidden="true">*</span></label>
+            <input type="text" id="name" name="name" required placeholder="Your full name" aria-required="true">
           </div>
           <div class="form-row">
-            <label for="email">Email</label>
-            <input type="email" id="email" name="email" required autocomplete="email" placeholder="your@email.com">
+            <label for="email">Email <span class="booking-required" aria-hidden="true">*</span></label>
+            <input type="email" id="email" name="email" required autocomplete="email" placeholder="your@email.com" aria-required="true">
           </div>
           <div class="form-row">
-            <label for="email-confirm">Confirm email</label>
-            <input type="email" id="email-confirm" name="email_confirm" required autocomplete="off" autocorrect="off" spellcheck="false" placeholder="Re-enter your email" readonly>
+            <label for="email-confirm">Confirm email <span class="booking-required" aria-hidden="true">*</span></label>
+            <input type="email" id="email-confirm" name="email_confirm" required autocomplete="off" autocorrect="off" spellcheck="false" placeholder="Re-enter your email" readonly aria-required="true">
           </div>
           <div class="form-row">
-            <label for="phone">Phone</label>
-            <input type="tel" id="phone" name="phone" required autocomplete="tel" placeholder="(555) 123-4567" inputmode="tel">
+            <label for="phone">Phone <span class="booking-required" aria-hidden="true">*</span></label>
+            <input type="tel" id="phone" name="phone" required autocomplete="tel" placeholder="(555) 123-4567" inputmode="tel" aria-required="true">
           </div>
           <div class="form-row">
             <label for="travel">Travel</label>
@@ -138,6 +138,6 @@
   <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js?v=6"></script>
-  <script src="app.js?v=31"></script>
+  <script src="app.js?v=33"></script>
 </body>
 </html>

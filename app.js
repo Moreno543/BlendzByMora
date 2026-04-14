@@ -1002,7 +1002,19 @@ function initBookingForm() {
       }
 
       status.className = 'booking-status success';
-      status.textContent = 'Your appointment request has been submitted! We\'ll confirm via email or phone.';
+      const smsOptIn = bookingPayload.sms_consent === true;
+      let successMsg;
+      if (smsOptIn) {
+        successMsg =
+          'Thank you — your appointment request has been received. A confirmation with your details has been sent to your email. You will also receive a text message with the same information. About one day before your appointment, you will get a reminder text; reply YES to that message to confirm your visit.';
+      } else if (hasFormspree) {
+        successMsg =
+          'Thank you — your appointment request has been received. A confirmation with your details has been sent to your email. We will contact you to finalize your appointment.';
+      } else {
+        successMsg =
+          'Thank you — your appointment request has been received. We will contact you by email or phone to confirm your appointment.';
+      }
+      status.textContent = successMsg;
       form.reset();
       if (flatpickrInstance) flatpickrInstance.clear();
       if (document.getElementById('booking-captcha-canvas')) {

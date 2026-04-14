@@ -471,6 +471,12 @@ section h2 {
   color: var(--color-text-muted);
 }
 
+.booking-form .booking-required {
+  color: var(--color-accent);
+  font-weight: 600;
+  margin-left: 0.1em;
+}
+
 .booking-form input,
 .booking-form select,
 .booking-form textarea {
