@@ -5,6 +5,7 @@
  * POST JSON: { email: "user@domain.com" }
  * Env: REOON_API_KEY — from Reoon dashboard → API & Integrations
  * Optional: REOON_VERIFY_MODE=quick (faster, weaker — not recommended for booking)
+ * Optional: REOON_ALLOW_CATCH_ALL=true — allow domains where any local part may work (default: reject; stops fake @bigcorp.com addresses)
  * Optional: EMAIL_VALIDATION_DISABLED=true
  *
  * Docs: https://www.reoon.com/articles/api-documentation-of-reoon-email-verifier/
@@ -28,7 +29,7 @@ function resolveMode() {
 }
 
 /** Map Reoon JSON to allow / deny booking. */
-function reoonDecision(data, mode) {
+function reoonDecision(data, mode, { allowCatchAll }) {
   if (!data || typeof data !== 'object') {
     return { ok: false, message: 'Could not verify email right now. Please try again.' };
   }
@@ -70,7 +71,16 @@ function reoonDecision(data, mode) {
     return { ok: true };
   }
 
-  // power
+  // power — catch-all domains: any mailbox name may be accepted, so Reoon can’t prove the address is real
+  if (st === 'catch_all') {
+    if (allowCatchAll) return { ok: true };
+    return {
+      ok: false,
+      message:
+        'This domain accepts mail for any name, so we can’t confirm your address. Use Gmail, Outlook, Yahoo, iCloud, or another email you check—or contact us to book.',
+    };
+  }
+
   const rejectMessages = {
     invalid:
       'That email address doesn’t exist or can’t receive messages. Double-check it and try again.',
@@ -88,7 +98,7 @@ function reoonDecision(data, mode) {
     return { ok: true };
   }
 
-  if (st === 'unknown' || st === 'catch_all' || st === 'role_account') {
+  if (st === 'unknown' || st === 'role_account') {
     return { ok: true };
   }
 
@@ -96,7 +106,7 @@ function reoonDecision(data, mode) {
     return { ok: true };
   }
 
-  if (data.is_deliverable === false && st && !['unknown', 'catch_all', 'role_account'].includes(st)) {
+  if (data.is_deliverable === false && st && !['unknown', 'role_account'].includes(st)) {
     return {
       ok: false,
       message:
@@ -182,7 +192,8 @@ export default async function handler(request) {
     );
   }
 
-  const decision = reoonDecision(data, mode);
+  const allowCatchAll = String(process.env.REOON_ALLOW_CATCH_ALL || '').toLowerCase() === 'true';
+  const decision = reoonDecision(data, mode, { allowCatchAll });
   if (!decision.ok) {
     return json({ ok: false, message: decision.message });
   }

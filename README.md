@@ -103,7 +103,8 @@ CREATE POLICY "Allow anonymous select reviews" ON reviews
 1. Sign up at [Reoon Email Verifier](https://emailverifier.reoon.com/) (free credits) → **API & Integrations** → create/copy your **API key**.
 2. In Netlify → **Site configuration** → **Environment variables**, add **`REOON_API_KEY`** = your key (Production; copy to **Deploy Previews** if you test PRs).
 3. Redeploy. The function uses Reoon **power** mode (checks the real inbox; slower than “quick” but catches bad Gmail/Yahoo addresses). Optional: `REOON_VERIFY_MODE=quick` for speed only — weaker checks.
-4. Locally, set `EMAIL_VALIDATION_DISABLED=true` or omit **`REOON_API_KEY`** to skip the check.
+4. **Catch-all domains** (Reoon status `catch_all`): the form **rejects** these by default so random `anything@somecompany.com` addresses aren’t accepted when the server can’t verify the mailbox. If you need to allow them (rare), set **`REOON_ALLOW_CATCH_ALL=true`** on Netlify.
+5. Locally, set `EMAIL_VALIDATION_DISABLED=true` or omit **`REOON_API_KEY`** to skip the check.
 
 If your form includes **travel**, add a column: `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS travel TEXT DEFAULT 'No';`
 
