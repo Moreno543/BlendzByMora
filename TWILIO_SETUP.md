@@ -56,14 +56,30 @@ ALTER TABLE bookings ADD COLUMN IF NOT EXISTS sms_consent BOOLEAN NOT NULL DEFAU
 
 ---
 
-## Step 3 — Twilio phone number (inbound webhook)
+## Step 3 — Inbound SMS (reply **YES**) — webhook URL
 
-1. Twilio → **Phone Numbers** → **Manage** → **Active numbers** → your number.  
-2. Under **Messaging** → **A message comes in** → **Webhook**, **HTTP POST**.  
-3. URL:  
-   `https://YOUR_DOMAIN/.netlify/functions/twilio-inbound-sms`  
-   Example: `https://blendzbymora.com/.netlify/functions/twilio-inbound-sms`  
+Replies must hit **`twilio-inbound-sms`** or **`sms_confirmed_at`** will never update. If customers see Twilio’s default *“Configure your number’s SMS URL…”*, the inbound webhook is not set (or the **Messaging Service** is handling inbound instead of your function).
+
+### A) Phone number (always set this)
+
+1. Twilio → **Phone Numbers** → **Manage** → **Active numbers** → your **+1 725…** number.  
+2. **Messaging** → **A message comes in** → **Webhook**, **HTTP POST**.  
+3. URL (use your real domain; match **https** and **www** to what you use in the browser):  
+   `https://blendzbymora.com/.netlify/functions/twilio-inbound-sms`  
 4. Save.
+
+### B) Messaging Service (required if inbound still doesn’t reach your function)
+
+If the number is on a **Messaging Service** (A2P), Twilio often sends **inbound** traffic to the **service**, not only the number.
+
+1. **Messaging** → **Services** → your **BlendzByMora** (or equivalent) service.  
+2. Open **Integration** (or **Inbound settings**).  
+3. Set **Inbound request URL** (or **Process inbound messages** → webhook) to the **same** URL as above:  
+   `https://blendzbymora.com/.netlify/functions/twilio-inbound-sms`  
+   Method **HTTP POST**.  
+4. Save.
+
+**Important:** The URL in Twilio must match what Netlify serves (**`www`** vs **apex**). If you use `https://www.blendzbymora.com` in the browser, use that exact host in the webhook URL.
 
 ---
 
@@ -124,5 +140,6 @@ Opt-in on the live site: **`book.html`** optional checkbox (not pre-checked, not
 | No confirmation after booking | Customer must **check** the SMS opt-in box on **`book.html`**; **`sms_consent`** must be `true` in **`bookings`** (run **`sql/sms_consent.sql`** if the column is missing) |
 | 30034 / undelivered / **Service** empty in logs | Set **`TWILIO_MESSAGING_SERVICE_SID`** on Netlify; keep your number in that service’s **Sender pool** and campaign linked to **that** service |
 | Reminder never sends | `reminder_sent_at` column exists; appointment ~23–25h away in **America/Los_Angeles**; hourly cron ran |
-| YES does nothing | Inbound webhook URL exact **https** host/path; column **`sms_confirmed_at`** on **`bookings`** exists; phone on booking matches sender digits |
-| Inbound 403 | Twilio **signature** — webhook URL in Twilio must match the URL Netlify uses (no wrong subdomain or trailing slash) |
+| YES does nothing / default *“Configure your number’s SMS URL”* reply | Set **phone** webhook **and** **Messaging Service → Integration → Inbound request URL** to `…/twilio-inbound-sms`; **https** + correct **www** vs apex |
+| YES saves nothing in DB | Column **`sms_confirmed_at`** exists; booking **phone** matches the device that texted **YES**; appointment **date** within the next ~30 days |
+| Inbound 403 | Twilio **signature** — webhook URL in Twilio must match Netlify (**www** vs non-www; no trailing slash on the path) |

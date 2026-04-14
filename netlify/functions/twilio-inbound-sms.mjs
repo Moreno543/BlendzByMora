@@ -59,6 +59,22 @@ function webhookFullUrl(request) {
   return `${proto}://${host}${u.pathname}`;
 }
 
+/** Twilio signs the exact URL configured in Console; try www / non-www if host differs. */
+function candidateWebhookUrls(fullUrl) {
+  const out = new Set([fullUrl]);
+  try {
+    const u = new URL(fullUrl);
+    const h = u.hostname;
+    if (h.startsWith('www.')) {
+      u.hostname = h.slice(4);
+    } else {
+      u.hostname = `www.${h}`;
+    }
+    out.add(u.toString());
+  } catch (_) {}
+  return [...out];
+}
+
 async function sendTwilioSms({ sid, token, messagingServiceSid, fromNum, to, body }) {
   const auth = Buffer.from(`${sid}:${token}`).toString('base64');
   const form = twilioMessageParams({
@@ -101,8 +117,10 @@ export default async function handler(request) {
   const sig = request.headers.get('x-twilio-signature') || '';
   const fullUrl = webhookFullUrl(request);
 
-  if (!validateTwilioRequest(token, sig, fullUrl, params)) {
-    console.warn('[twilio-inbound-sms] bad signature', fullUrl);
+  const urls = candidateWebhookUrls(fullUrl);
+  const signatureOk = urls.some((u) => validateTwilioRequest(token, sig, u, params));
+  if (!signatureOk) {
+    console.warn('[twilio-inbound-sms] bad signature', { tried: urls });
     return new Response('Forbidden', { status: 403 });
   }
 
