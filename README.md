@@ -80,7 +80,7 @@ CREATE POLICY "Allow anonymous select reviews" ON reviews
    - Project URL
    - `anon` public key
 
-4. Paste them into `config.js` (the booking form validates email in the browser; **phone** is checked with **Twilio Lookup** on submit via a Netlify function — same idea as validating email, no SMS code — requires Twilio env vars on Netlify; see **TWILIO_SETUP.md**).
+4. Paste them into `config.js` (the booking form validates email in the browser; on submit **email** can be checked with **Reoon** and **phone** with **Twilio Lookup** — Netlify functions; see **TWILIO_SETUP.md** and optional Reoon key below).
    ```js
    SUPABASE_URL: 'https://xxxxx.supabase.co',
    SUPABASE_ANON_KEY: 'your-anon-key',
@@ -97,6 +97,13 @@ CREATE POLICY "Allow anonymous select reviews" ON reviews
    ```
 
 5. (Optional) Create another form for **Reviews** and set `FORMSPREE_REVIEW_ID`.
+
+**Email verification (optional, recommended with Formspree `_cc`):** Formspree may accept a booking but **fail** to copy the customer if their address doesn’t exist (SMTP 550 — you only see it in Formspree’s dashboard). To show an error **before** submit:
+
+1. Sign up at [Reoon Email Verifier](https://emailverifier.reoon.com/) (free credits) → **API & Integrations** → create/copy your **API key**.
+2. In Netlify → **Site configuration** → **Environment variables**, add **`REOON_API_KEY`** = your key (Production; copy to **Deploy Previews** if you test PRs).
+3. Redeploy. The function uses Reoon **power** mode (checks the real inbox; slower than “quick” but catches bad Gmail/Yahoo addresses). Optional: `REOON_VERIFY_MODE=quick` for speed only — weaker checks.
+4. Locally, set `EMAIL_VALIDATION_DISABLED=true` or omit **`REOON_API_KEY`** to skip the check.
 
 If your form includes **travel**, add a column: `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS travel TEXT DEFAULT 'No';`
 

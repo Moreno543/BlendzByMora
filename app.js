@@ -727,6 +727,38 @@ async function fetchClientIpForBooking() {
   }
 }
 
+/** Reoon email verification via Netlify (optional); skipped if REOON_API_KEY unset. */
+async function verifyEmailDeliverable(email) {
+  try {
+    const res = await fetch('/.netlify/functions/verify-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (data.skipped === true) {
+      return { ok: true };
+    }
+    if (data.ok === true) {
+      return { ok: true };
+    }
+    if (typeof data.message === 'string' && data.message.trim()) {
+      return { ok: false, message: data.message.trim() };
+    }
+    return {
+      ok: false,
+      message:
+        'Could not confirm that email can receive messages. Check the address and try again.',
+    };
+  } catch (err) {
+    console.warn('[Blendz] verify-email:', err);
+    return {
+      ok: false,
+      message: 'Could not verify email. Please try again.',
+    };
+  }
+}
+
 /** Twilio Lookup (server-side): real / routable number — no SMS code. */
 async function verifyPhoneWithTwilioLookup(phoneFormatted) {
   const digits = normalizeUsPhoneDigits(phoneFormatted);
@@ -854,8 +886,18 @@ function initBookingForm() {
     }
 
     status.className = 'booking-status loading';
-    status.textContent = 'Verifying phone number…';
+    status.textContent = 'Verifying email…';
     status.style.display = 'block';
+
+    const emailCheck = await verifyEmailDeliverable(contact.email);
+    if (!emailCheck.ok) {
+      status.className = 'booking-status error';
+      status.textContent = emailCheck.message;
+      status.style.display = 'block';
+      return;
+    }
+
+    status.textContent = 'Verifying phone number…';
 
     const lookupResult = await verifyPhoneWithTwilioLookup(contact.phoneFormatted);
     if (!lookupResult.ok) {
