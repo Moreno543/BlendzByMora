@@ -476,11 +476,11 @@ async function updateTimeSlots(dateStr) {
   if (CONFIG.SUPABASE_URL && CONFIG.SUPABASE_ANON_KEY) {
     try {
       const supabaseClient = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
-      const { data } = await supabaseClient
-        .from('bookings')
-        .select('time')
-        .eq('date', dateStr);
-      booked = (data || []).map((b) => b.time);
+      const { data, error: slotErr } = await supabaseClient.rpc('get_booked_times', { p_date: dateStr });
+      if (slotErr) {
+        console.warn('get_booked_times RPC failed (run sql/rls_secure_anon_access.sql in Supabase):', slotErr);
+      }
+      booked = (data || []).map((row) => row.slot_time).filter(Boolean);
     } catch (err) {
       console.warn('Supabase not configured or error:', err);
     }
@@ -968,11 +968,18 @@ function initBookingForm() {
       // 1. Save to Supabase (prevents double booking)
       if (hasSupabase) {
         const supabaseClient = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
-        const { data: inserted, error } = await supabaseClient
-          .from('bookings')
-          .insert([bookingPayload])
-          .select('id')
-          .single();
+        const { data: insertedId, error } = await supabaseClient.rpc('insert_booking_from_client', {
+          p_service: bookingPayload.service,
+          p_date: bookingPayload.date,
+          p_time: bookingPayload.time,
+          p_name: bookingPayload.name,
+          p_email: bookingPayload.email,
+          p_phone: bookingPayload.phone,
+          p_travel: bookingPayload.travel,
+          p_notes: bookingPayload.notes || null,
+          p_sms_consent: bookingPayload.sms_consent === true,
+          p_client_ip: bookingPayload.client_ip || null,
+        });
         if (error) {
           const em = String(error.message || '');
           if (em.includes('BLOCKED_IP')) {
@@ -991,7 +998,7 @@ function initBookingForm() {
           }
           throw error;
         }
-        const newId = inserted?.id != null ? String(inserted.id).trim() : '';
+        const newId = insertedId != null ? String(insertedId).trim() : '';
         if (newId) {
           fetch('/.netlify/functions/booking-sms', {
             method: 'POST',
@@ -1007,7 +1014,7 @@ function initBookingForm() {
             .catch((err) => console.warn('[Blendz] SMS request error:', err));
         } else {
           console.warn(
-            '[Blendz] No booking id returned after insert — SMS skipped. Check Supabase RLS allows SELECT on bookings for anon (needed for .select("id") after insert).'
+            '[Blendz] No booking id after insert_booking_from_client — SMS skipped. Run sql/rls_secure_anon_access.sql and confirm the RPC exists.'
           );
         }
       }
@@ -1256,7 +1263,8 @@ async function loadReviews() {
     if (CONFIG.SUPABASE_URL && CONFIG.SUPABASE_ANON_KEY) {
       try {
         const client = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
-        const { data } = await client.from('reviews').select('*').order('created_at', { ascending: true }).limit(50);
+        const { data, error: revErr } = await client.rpc('list_reviews_public', { p_limit: 50 });
+        if (revErr) console.warn('list_reviews_public RPC failed (run sql/rls_secure_anon_access.sql):', revErr);
         if (data && data.length) {
           reviewsData = data;
           currentReviewIndex = 0;

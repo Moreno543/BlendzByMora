@@ -22,7 +22,7 @@
  *        created_at TIMESTAMPTZ DEFAULT NOW()
  *      );
  *    - For SMS reminders, see TWILIO_SETUP.md (or ALTER bookings ADD reminder_sent_at).
- *    - Enable Row Level Security (RLS) but add policy to allow anonymous INSERT and SELECT
+ *    - Enable Row Level Security (RLS): anonymous INSERT on bookings/reviews; run sql/rls_secure_anon_access.sql for safe reads (RPCs)
  *    - In Settings > API, copy your Project URL and anon/public key
  *    - Paste them below
  * 

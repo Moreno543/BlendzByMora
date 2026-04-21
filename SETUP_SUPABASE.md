@@ -47,10 +47,9 @@ ALTER TABLE bookings ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Allow anonymous insert" ON bookings
   FOR INSERT WITH CHECK (true);
-
-CREATE POLICY "Allow anonymous select" ON bookings
-  FOR SELECT USING (true);
 ```
+
+Do **not** add a blanket anonymous `SELECT` on `bookings` (it would expose client PII to anyone with your anon key). You will run **`sql/rls_secure_anon_access.sql`** after the reviews table exists (see **Secure public access** below).
 
 4. Click **Run** (or press Cmd+Enter)
 5. You should see "Success. No rows returned"
@@ -75,13 +74,15 @@ ALTER TABLE reviews ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Allow anonymous insert reviews" ON reviews
   FOR INSERT WITH CHECK (true);
-
-CREATE POLICY "Allow anonymous select reviews" ON reviews
-  FOR SELECT USING (true);
 ```
 
 3. Click **Run**
 4. You should see "Success. No rows returned"
+
+### Secure public access (required)
+
+1. In **SQL Editor**, open **`sql/rls_secure_anon_access.sql`** in this repo, copy **all**, paste, **Run** once.
+2. This removes anonymous **read** access to full `bookings` / `reviews` rows, adds **`get_booked_times`**, **`insert_booking_from_client`**, and **`list_reviews_public`** so the website still works without exposing the whole database to the browser key.
 
 ### Customer contacts (name, phone, email from bookings)
 

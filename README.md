@@ -44,14 +44,11 @@ CREATE TABLE bookings (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Allow public insert/select (for your site)
+-- Public booking writes only (no blanket anon SELECT — see sql/rls_secure_anon_access.sql)
 ALTER TABLE bookings ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Allow anonymous insert" ON bookings
   FOR INSERT WITH CHECK (true);
-
-CREATE POLICY "Allow anonymous select" ON bookings
-  FOR SELECT USING (true);
 
 -- If you created bookings before client_ip existed, run: sql/bookings_client_ip.sql
 -- A2P opt-in (optional checkbox on book.html): sql/sms_consent.sql
@@ -71,16 +68,15 @@ ALTER TABLE reviews ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Allow anonymous insert reviews" ON reviews
   FOR INSERT WITH CHECK (true);
-
-CREATE POLICY "Allow anonymous select reviews" ON reviews
-  FOR SELECT USING (true);
 ```
 
-3. Go to **Settings → API** and copy:
+3. In **SQL Editor**, run **`sql/rls_secure_anon_access.sql`** (locks down anon reads; adds RPCs the site uses).
+
+4. Go to **Settings → API** and copy:
    - Project URL
    - `anon` public key
 
-4. Paste them into `config.js` (the booking form validates email in the browser; on submit **email** can be checked with **Reoon** and **phone** with **Twilio Lookup** — Netlify functions; see **TWILIO_SETUP.md** and optional Reoon key below).
+5. Paste them into `config.js` (the booking form validates email in the browser; on submit **email** can be checked with **Reoon** and **phone** with **Twilio Lookup** — Netlify functions; see **TWILIO_SETUP.md** and optional Reoon key below).
    ```js
    SUPABASE_URL: 'https://xxxxx.supabase.co',
    SUPABASE_ANON_KEY: 'your-anon-key',
