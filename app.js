@@ -523,21 +523,42 @@ async function updateTimeSlots(dateStr) {
   }
 }
 
+/** Shown in notes when “Travel: Yes”; submit handler uses the same text (no duplicate prefix). */
+const BOOKING_TRAVEL_NOTES_PREFIX = 'Travel was requested — please provide your location/address. ';
+
+function stripAllBookingTravelPrefixes(raw) {
+  let t = String(raw || '');
+  const removable = [
+    BOOKING_TRAVEL_NOTES_PREFIX,
+    'Travel requested — please include your location/address. ',
+    'Travel requested. ',
+  ];
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const p of removable) {
+      if (t.startsWith(p)) {
+        t = t.slice(p.length);
+        changed = true;
+      }
+    }
+  }
+  return t.trim();
+}
+
 function initTravelNotes() {
   const travelSelect = document.getElementById('travel');
   const notesField = document.getElementById('notes');
   if (!travelSelect || !notesField) return;
 
-  const travelPrefix = 'Travel requested — please include your location/address. ';
-
   travelSelect.addEventListener('change', () => {
-    const notes = notesField.value;
+    const rest = stripAllBookingTravelPrefixes(notesField.value);
     if (travelSelect.value === 'Yes') {
-      if (!notes.startsWith(travelPrefix)) {
-        notesField.value = travelPrefix + notes.replace(travelPrefix, '').trim();
-      }
+      notesField.value = rest
+        ? BOOKING_TRAVEL_NOTES_PREFIX + rest
+        : BOOKING_TRAVEL_NOTES_PREFIX.trim();
     } else {
-      notesField.value = notes.replace(travelPrefix, '').trim();
+      notesField.value = rest;
     }
   });
 }
@@ -909,7 +930,10 @@ function initBookingForm() {
 
     let notes = form.notes.value || '';
     if (form.travel?.value === 'Yes') {
-      notes = 'Travel requested. ' + notes;
+      const rest = stripAllBookingTravelPrefixes(notes);
+      notes = rest ? BOOKING_TRAVEL_NOTES_PREFIX + rest : BOOKING_TRAVEL_NOTES_PREFIX.trim();
+    } else {
+      notes = stripAllBookingTravelPrefixes(notes);
     }
 
     const payload = {
