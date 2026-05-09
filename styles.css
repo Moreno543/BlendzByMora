@@ -222,7 +222,8 @@ section h2 {
   padding-top: 6rem;
 }
 
-.home-services-intro {
+.home-services-intro,
+.services-page-intro {
   max-width: 40rem;
   margin-left: auto;
   margin-right: auto;
