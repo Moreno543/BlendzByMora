@@ -256,7 +256,7 @@ section h2 {
   -webkit-tap-highlight-color: rgba(201, 169, 98, 0.18);
 }
 
-/* Category cards (Glams / Bridal): always show accent frame so touch devices match desktop hover cue */
+/* Category cards (Glam / Bridal): always show accent frame so touch devices match desktop hover cue */
 .bucket-card.bucket-link {
   border-color: rgba(201, 169, 98, 0.26);
 }
@@ -283,15 +283,34 @@ section h2 {
   margin: 0;
 }
 
+.bucket-card-head {
+  margin-bottom: 1.25rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
 .bucket-title {
   font-family: var(--font-display);
   font-size: 1.5rem;
   font-weight: 600;
   letter-spacing: 0.1em;
   color: var(--color-accent);
-  margin-bottom: 1.5rem;
-  padding-bottom: 0.75rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  margin-bottom: 0.35rem;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.bucket-cta {
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+  margin: 0;
+  font-weight: 400;
+  line-height: 1.4;
+}
+
+.bucket-card.bucket-link:hover .bucket-cta {
+  color: var(--color-accent);
 }
 
 .bucket-services {
@@ -658,6 +677,10 @@ section h2 {
 }
 
 /* Reviews */
+.reviews-page {
+  padding-top: 5rem;
+}
+
 .reviews > h2 {
   margin-bottom: 0.75rem;
 }
@@ -884,6 +907,11 @@ section h2 {
   color: var(--color-text-muted);
 }
 
+.reviews-display-section .reviews-display h2 {
+  margin-bottom: 1.5rem;
+}
+
+.reviews-display h2,
 .reviews-display h3 {
   font-family: var(--font-display);
   font-size: 1.5rem;

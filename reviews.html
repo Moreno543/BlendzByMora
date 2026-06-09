@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reviews | Blendz By Mora – Las Vegas Makeup Artist</title>
+  <meta name="description" content="Leave a review for Blendz By Mora. Share your glam or bridal makeup experience on our site, Yelp, or Google.">
+  <link rel="canonical" href="https://blendzbymora.com/reviews.html">
+  <link rel="icon" href="https://blendzbymora.com/assets/profile.png" type="image/png" sizes="48x48">
+  <link rel="apple-touch-icon" href="https://blendzbymora.com/assets/profile.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="header">
+    <div class="header-content">
+      <a href="index.html" class="logo-link">
+        <img src="assets/profile.png" alt="Blendz By Mora" class="profile-pic">
+        <span class="brand-name">BLENDZ BY MORA</span>
+      </a>
+      <nav class="nav">
+        <a href="index.html">Home</a>
+        <a href="services.html">Services</a>
+        <a href="reviews.html" class="nav-current">Reviews</a>
+        <a href="faq.html">FAQ</a>
+        <a href="index.html#about">About</a>
+        <a href="index.html#contact">Contact</a>
+        <a href="book.html" class="nav-book">Book Now</a>
+      </nav>
+      <button class="mobile-menu-btn" aria-label="Toggle menu">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </header>
+
+  <main class="reviews-page">
+    <section id="reviews" class="reviews">
+      <h2>Reviews</h2>
+      <p class="reviews-intro">Love your experience? Share it with others!</p>
+
+      <div class="review-options">
+        <div class="review-option">
+          <h3>Leave a Review on Our Site</h3>
+          <form id="review-form" class="review-form">
+            <div class="form-row">
+              <label for="review-name">Name</label>
+              <input type="text" id="review-name" name="name" required placeholder="Your name">
+            </div>
+            <div class="form-row">
+              <label for="review-service">Service</label>
+              <select id="review-service" name="service" required>
+                <option value="">Select a service</option>
+                <optgroup label="Glam">
+                  <option value="Soft Glam - $100">Soft Glam — $100</option>
+                  <option value="Full Glam - $150">Full Glam — $150</option>
+                </optgroup>
+                <optgroup label="Bridal">
+                  <option value="Mother of the Bride & Mother of the Groom Glam - $100 each">Mother of the Bride & Mother of the Groom Glam — $100 each</option>
+                  <option value="Bridesmaid Glam - $125">Bridesmaid Glam — $125</option>
+                  <option value="Day-of Bridal Makeup - $200">Day-of Bridal Makeup — $200</option>
+                  <option value="Bridal Glam + Bridal Trial + Custom Touch Up Kit - $350">Bridal Glam + Bridal Trial + Custom Touch Up Kit — $350</option>
+                  <option value="Bridal Glam + Rehearsal Dinner Glam - $450">Bridal Glam + Rehearsal Dinner Glam — $450</option>
+                  <option value="Bridal Trial + Rehearsal Dinner Glam + Day of Bridal Glam + Custom Touch-up Kit - $600">Bridal Trial + Rehearsal Dinner Glam + Day of Bridal Glam + Custom Touch-up Kit — $600</option>
+                </optgroup>
+              </select>
+            </div>
+            <div class="form-row">
+              <label for="review-rating">Rating</label>
+              <select id="review-rating" name="rating" required>
+                <option value="">Select rating</option>
+                <option value="5">★★★★★</option>
+                <option value="4">★★★★☆</option>
+                <option value="3">★★★☆☆</option>
+                <option value="2">★★☆☆☆</option>
+                <option value="1">★☆☆☆☆</option>
+              </select>
+            </div>
+            <div class="form-row review-photo-row">
+              <label for="review-photo">Photo <span class="optional-label">(optional)</span></label>
+              <div class="review-file-picker">
+                <input type="file" id="review-photo" name="photo" class="review-file-input" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" aria-describedby="review-photo-hint">
+                <span id="review-file-name" class="review-file-name" aria-live="polite"></span>
+              </div>
+              <span class="review-photo-hint" id="review-photo-hint">JPG, PNG, or WebP · max 5 MB. If you skip this, only your name, service, stars, and review text are shown.</span>
+            </div>
+            <div class="form-row">
+              <label for="review-text">Your Review</label>
+              <textarea id="review-text" name="review" rows="4" required placeholder="Tell us about your experience..."></textarea>
+            </div>
+            <button type="submit" class="btn btn-review">Submit Review</button>
+          </form>
+        </div>
+        <div class="review-external">
+          <h3>Or Review Us On</h3>
+          <div class="review-links">
+            <a href="https://www.yelp.com/writeareview/biz/FWj6n-Y8eY9XBtFDlknXyQ" target="_blank" rel="noopener noreferrer" class="review-link">
+              <span class="review-icon">Yelp</span>
+            </a>
+            <a href="#" id="google-review-link" target="_blank" rel="noopener noreferrer" class="review-link">
+              <span class="review-icon">Google</span>
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p>© Blendz By Mora. All rights reserved. <a href="terms.html">Terms</a> · <a href="faq.html">FAQ</a> · <a href="privacy.html">Privacy Policy</a></p>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js?v=6"></script>
+  <script src="app.js?v=34"></script>
+</body>
+</html>

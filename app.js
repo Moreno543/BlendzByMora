@@ -1306,7 +1306,7 @@ async function loadReviews() {
 
     reviewsData = [];
     clearReviewsAutoAdvance();
-    list.innerHTML = '<p class="review-item-text" style="text-align:center;color:var(--color-text-muted);padding:2rem">No reviews yet. Be the first to leave one!</p>';
+    list.innerHTML = '<p class="review-item-text" style="text-align:center;color:var(--color-text-muted);padding:2rem">No reviews yet. Be the first to <a href="reviews.html" style="color:var(--color-accent)">leave a review</a>!</p>';
     if (dotsContainer) dotsContainer.innerHTML = '';
   } finally {
     // Cross-page links (e.g. faq → index#contact) scroll before reviews render; re-align once carousel/placeholder DOM exists
