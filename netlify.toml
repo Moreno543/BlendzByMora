@@ -7,6 +7,8 @@
   # Function bundles read secrets at runtime via process.env — not from published static files.
   SECRETS_SCAN_OMIT_PATHS = ".netlify/**"
   SECRETS_SCAN_SMART_DETECTION_ENABLED = "false"
+  # SQUARE_ENVIRONMENT / SQUARE_DEPOSIT_PERCENT are config labels, not secrets (values like "production" appear in docs).
+  SECRETS_SCAN_OMIT_KEYS = "SQUARE_ENVIRONMENT,SQUARE_DEPOSIT_PERCENT,SQUARE_LOCATION_ID"
 
 [functions]
   node_bundler = "esbuild"

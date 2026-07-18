@@ -39,7 +39,7 @@ export default async function handler(request) {
   const locationId = env('SQUARE_LOCATION_ID');
   const supabaseUrl = env('SUPABASE_URL');
   const serviceKey = env('SUPABASE_SERVICE_ROLE_KEY');
-  const environment = env('SQUARE_ENVIRONMENT') || 'production';
+  const environment = env('SQUARE_ENVIRONMENT');
   const depositPercent = Number(env('SQUARE_DEPOSIT_PERCENT') || 50);
 
   if (!accessToken || !locationId || !supabaseUrl || !serviceKey) {

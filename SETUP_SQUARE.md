@@ -46,7 +46,7 @@ Or: Developer Dashboard → **Locations** tab for the linked seller account.
 |----------|---------|----------|
 | **`SQUARE_ACCESS_TOKEN`** | Production access token from Developer Dashboard | Yes |
 | **`SQUARE_LOCATION_ID`** | `LXXXXXXXX` | Yes |
-| **`SQUARE_ENVIRONMENT`** | `production` or `sandbox` | Yes |
+| **`SQUARE_ENVIRONMENT`** | `production` or `sandbox` (not sensitive — do **not** mark as secret in Netlify) | Yes |
 | **`SQUARE_DEPOSIT_PERCENT`** | `50` | No (default 50) |
 
 You already need **`SUPABASE_URL`** and **`SUPABASE_SERVICE_ROLE_KEY`** for bookings (same as Twilio functions).
@@ -101,7 +101,7 @@ If deploys fail after you add Square env vars:
 
 1. Edit **`SQUARE_ACCESS_TOKEN`** → **uncheck “Contains secret values”** (the token stays in Netlify; it just won’t block builds).
 2. Scopes: **uncheck Builds**; keep **Functions** and **Runtime** only.
-3. If **`FORMSPREE_BOOKING_ID`** is marked secret, **uncheck secret** too — that value is public in the browser (`config.js`).
+3. If **`SQUARE_ENVIRONMENT`** or **`SQUARE_DEPOSIT_PERCENT`** are marked secret, **uncheck secret** — values like `production` and `50` appear in docs/code and will block deploys.
 4. **Deploys → Trigger deploy → Clear cache and deploy site**.
 
 ---
