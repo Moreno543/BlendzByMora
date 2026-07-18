@@ -142,7 +142,7 @@ export async function createServiceOrder({
 }
 
 export async function createSquarePayment({
-  bookingId,
+  idempotencySeed,
   locationId,
   sourceId,
   amountCents,
@@ -156,7 +156,7 @@ export async function createSquarePayment({
     path: '/v2/payments',
     method: 'POST',
     body: {
-      idempotency_key: squareIdempotencyKey('dep-', bookingId),
+      idempotency_key: squareIdempotencyKey('dep-', idempotencySeed),
       source_id: sourceId,
       amount_money: { amount: amountCents, currency: 'USD' },
       location_id: locationId,

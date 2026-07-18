@@ -58,6 +58,7 @@ export default async function handler(request) {
 
   const bookingId = typeof body?.bookingId === 'string' ? body.bookingId.trim() : '';
   const sourceId = typeof body?.sourceId === 'string' ? body.sourceId.trim() : '';
+  const attemptId = typeof body?.attemptId === 'string' ? body.attemptId.trim() : '';
   if (!bookingId || !/^[0-9a-f-]{36}$/i.test(bookingId)) {
     return new Response(JSON.stringify({ error: 'Invalid bookingId' }), {
       status: 400,
@@ -66,6 +67,12 @@ export default async function handler(request) {
   }
   if (!sourceId) {
     return new Response(JSON.stringify({ error: 'Invalid payment token' }), {
+      status: 400,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+  if (!attemptId || !/^[0-9a-f-]{36}$/i.test(attemptId)) {
+    return new Response(JSON.stringify({ error: 'Invalid payment attemptId' }), {
       status: 400,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
@@ -128,7 +135,7 @@ export default async function handler(request) {
     });
 
     const payment = await createSquarePayment({
-      bookingId,
+      idempotencySeed: attemptId,
       locationId,
       sourceId,
       amountCents: depositCents,

@@ -866,6 +866,10 @@ async function showBookingDepositPayment({ status, bookingId, serviceLabel }) {
     payBtn.disabled = true;
     payBtn.textContent = 'Processing…';
     try {
+      const attemptId =
+        typeof crypto !== 'undefined' && crypto.randomUUID
+          ? crypto.randomUUID()
+          : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
       const tokenResult = await bbmSquareCard.tokenize();
       if (tokenResult.status !== 'OK') {
         const detail =
@@ -875,7 +879,7 @@ async function showBookingDepositPayment({ status, bookingId, serviceLabel }) {
       const res = await fetch('/.netlify/functions/square-deposit-payment', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify({ bookingId, sourceId: tokenResult.token }),
+        body: JSON.stringify({ bookingId, sourceId: tokenResult.token, attemptId }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.ok) {
