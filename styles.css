@@ -713,6 +713,15 @@ section h2 {
   color: var(--color-text-muted);
 }
 
+.booking-deposit-link {
+  margin-top: 1.25rem;
+}
+
+.booking-deposit-link .btn {
+  display: inline-block;
+  text-decoration: none;
+}
+
 /* Reviews */
 .reviews-page {
   padding-top: 5rem;

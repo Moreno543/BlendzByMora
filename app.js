@@ -523,7 +523,7 @@ async function updateTimeSlots(dateStr) {
   }
 }
 
-/** Shown in notes when “Travel: Yes”; submit handler uses the same text (no duplicate prefix). */
+/** Optional hint inserted when the user selects Travel: Yes; never re-added on submit if they remove it. */
 const BOOKING_TRAVEL_NOTES_PREFIX = 'Travel was requested — please provide your location/address. ';
 
 function stripAllBookingTravelPrefixes(raw) {
@@ -748,6 +748,20 @@ async function fetchClientIpForBooking() {
   }
 }
 
+/** Square deposit invoice (optional); skipped if Square env vars unset on Netlify. */
+async function fetchSquareDepositUrl(bookingId) {
+  const res = await fetch('/.netlify/functions/square-booking-invoice', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify({ bookingId }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (data.skipped) return null;
+  if (data.publicUrl) return data.publicUrl;
+  if (!res.ok) console.warn('[Blendz] Square invoice:', data.error || res.status);
+  return null;
+}
+
 /** Reoon email verification via Netlify (optional); skipped if REOON_API_KEY unset. */
 async function verifyEmailDeliverable(email) {
   try {
@@ -937,11 +951,8 @@ function initBookingForm() {
       return;
     }
 
-    let notes = form.notes.value || '';
-    if (form.travel?.value === 'Yes') {
-      const rest = stripAllBookingTravelPrefixes(notes);
-      notes = rest ? BOOKING_TRAVEL_NOTES_PREFIX + rest : BOOKING_TRAVEL_NOTES_PREFIX.trim();
-    } else {
+    let notes = (form.notes.value || '').trim();
+    if (form.travel?.value !== 'Yes') {
       notes = stripAllBookingTravelPrefixes(notes);
     }
 
@@ -1000,6 +1011,8 @@ function initBookingForm() {
         ...(clientIp ? { client_ip: clientIp } : {}),
       };
 
+      let bookingId = '';
+
       // 1. Save to Supabase (prevents double booking)
       if (hasSupabase) {
         const supabaseClient = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
@@ -1033,12 +1046,12 @@ function initBookingForm() {
           }
           throw error;
         }
-        const newId = insertedId != null ? String(insertedId).trim() : '';
-        if (newId) {
+        bookingId = insertedId != null ? String(insertedId).trim() : '';
+        if (bookingId) {
           fetch('/.netlify/functions/booking-sms', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-            body: JSON.stringify({ bookingId: newId }),
+            body: JSON.stringify({ bookingId }),
           })
             .then(async (r) => {
               if (!r.ok) {
@@ -1065,6 +1078,7 @@ function initBookingForm() {
           `Hello ${firstName},\n\n` +
           'Thank you for submitting an appointment request with Blendz By Mora. Below is a copy of the services you requested for your records.\n\n' +
           `You agreed to our Service Agreement (version ${agreementVersion}). Keep this link for your records:\n${agreementUrl}\n\n` +
+          'To secure your appointment, a 50% deposit is due upon booking. You will receive a Square invoice by email with payment instructions; the remaining balance is due on your service date.\n\n' +
           'Our team will review your request and follow up shortly to confirm your appointment by email or phone.\n\n' +
           'Kind regards,\nBlendz By Mora';
         // Shown first in Formspree emails (you + customer CC) — reads as a professional cover note above the fields
@@ -1090,10 +1104,25 @@ function initBookingForm() {
         if (!res.ok) throw new Error('Formspree failed');
       }
 
+      let depositUrl = null;
+      if (bookingId) {
+        status.className = 'booking-status loading';
+        status.textContent = 'Preparing your deposit invoice…';
+        status.style.display = 'block';
+        try {
+          depositUrl = await fetchSquareDepositUrl(bookingId);
+        } catch (err) {
+          console.warn('[Blendz] Square deposit invoice failed', err);
+        }
+      }
+
       status.className = 'booking-status success';
       const smsOptIn = bookingPayload.sms_consent === true;
       let successMsg;
-      if (smsOptIn) {
+      if (depositUrl) {
+        successMsg =
+          'Thank you — your appointment request has been received. Pay your 50% deposit now to secure your date. Square also emailed you an invoice; the remaining balance is due on your service date.';
+      } else if (smsOptIn) {
         successMsg =
           'Thank you — your appointment request has been received. A confirmation with your details and Service Agreement link has been sent to your email. You will also receive a text message with the same information. About one day before your appointment, you will get a reminder text; reply YES to that message to confirm your visit.';
       } else if (hasFormspree) {
@@ -1103,7 +1132,24 @@ function initBookingForm() {
         successMsg =
           'Thank you — your appointment request has been received. We will contact you by email or phone to confirm your appointment.';
       }
-      status.textContent = successMsg;
+      if (depositUrl) {
+        status.textContent = '';
+        const msg = document.createElement('p');
+        msg.textContent = successMsg;
+        status.appendChild(msg);
+        const linkWrap = document.createElement('p');
+        linkWrap.className = 'booking-deposit-link';
+        const link = document.createElement('a');
+        link.href = depositUrl;
+        link.className = 'btn btn-primary';
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.textContent = 'Pay 50% deposit';
+        linkWrap.appendChild(link);
+        status.appendChild(linkWrap);
+      } else {
+        status.textContent = successMsg;
+      }
       form.reset();
       if (flatpickrInstance) flatpickrInstance.clear();
       if (document.getElementById('booking-captcha-canvas')) {
