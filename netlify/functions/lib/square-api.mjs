@@ -1,6 +1,13 @@
 /** Square Invoices API helpers (server-side only). */
 
 const DEFAULT_SQUARE_VERSION = '2024-10-17';
+const MAX_IDEMPOTENCY_KEY_LEN = 45;
+
+/** Square idempotency keys must be ≤ 45 characters. */
+export function squareIdempotencyKey(prefix, unique) {
+  const raw = `${prefix}${unique}`;
+  return raw.length <= MAX_IDEMPOTENCY_KEY_LEN ? raw : raw.slice(0, MAX_IDEMPOTENCY_KEY_LEN);
+}
 
 export function squareBaseUrl(environment) {
   const env = String(environment || 'production').toLowerCase();
@@ -78,7 +85,7 @@ export async function findOrCreateCustomer({ email, name, phone, accessToken, en
     path: '/v2/customers',
     method: 'POST',
     body: {
-      idempotency_key: `customer-${emailNorm}`,
+      idempotency_key: squareIdempotencyKey('cust-', emailNorm),
       given_name,
       ...(family_name ? { family_name } : {}),
       email_address: emailNorm,
@@ -111,7 +118,7 @@ export async function createServiceOrder({
     path: '/v2/orders',
     method: 'POST',
     body: {
-      idempotency_key: `order-${bookingId}`,
+      idempotency_key: squareIdempotencyKey('ord-', bookingId),
       order: {
         location_id: locationId,
         line_items: [
@@ -149,7 +156,7 @@ export async function createSquarePayment({
     path: '/v2/payments',
     method: 'POST',
     body: {
-      idempotency_key: `pay-deposit-${bookingId}`,
+      idempotency_key: squareIdempotencyKey('dep-', bookingId),
       source_id: sourceId,
       amount_money: { amount: amountCents, currency: 'USD' },
       location_id: locationId,
@@ -183,7 +190,7 @@ export async function createBalanceOrder({
     path: '/v2/orders',
     method: 'POST',
     body: {
-      idempotency_key: `order-balance-${bookingId}`,
+      idempotency_key: squareIdempotencyKey('obal-', bookingId),
       order: {
         location_id: locationId,
         line_items: [
@@ -220,7 +227,7 @@ export async function createAndPublishBalanceInvoice({
     path: '/v2/invoices',
     method: 'POST',
     body: {
-      idempotency_key: `invoice-balance-${bookingId}`,
+      idempotency_key: squareIdempotencyKey('ibal-', bookingId),
       invoice: {
         location_id: locationId,
         order_id: orderId,
@@ -256,7 +263,7 @@ export async function createAndPublishBalanceInvoice({
     path: `/v2/invoices/${invoice.id}/publish`,
     method: 'POST',
     body: {
-      idempotency_key: `publish-balance-${bookingId}`,
+      idempotency_key: squareIdempotencyKey('pbal-', bookingId),
       version: invoice.version,
     },
     accessToken,
@@ -291,7 +298,7 @@ export async function createAndPublishDepositInvoice({
     path: '/v2/invoices',
     method: 'POST',
     body: {
-      idempotency_key: `invoice-${bookingId}`,
+      idempotency_key: squareIdempotencyKey('inv-', bookingId),
       invoice: {
         location_id: locationId,
         order_id: orderId,
@@ -332,7 +339,7 @@ export async function createAndPublishDepositInvoice({
     path: `/v2/invoices/${invoice.id}/publish`,
     method: 'POST',
     body: {
-      idempotency_key: `publish-${bookingId}`,
+      idempotency_key: squareIdempotencyKey('pub-', bookingId),
       version: invoice.version,
     },
     accessToken,
