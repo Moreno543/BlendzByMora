@@ -103,6 +103,13 @@
             <textarea id="notes" name="notes" rows="3" placeholder="Any special requests or details..."></textarea>
           </div>
 
+          <div class="form-row booking-contract-consent" id="booking-contract-consent">
+            <label class="booking-consent-label" for="service-agreement">
+              <input type="checkbox" id="service-agreement" name="service_agreement" value="yes" required>
+              <span class="booking-consent-text">I have read and agree to the <a href="service-agreement.html" target="_blank" rel="noopener noreferrer">Service Agreement</a>, including liability, allergy disclosure, travel policy, and payment terms. <strong>Required to submit your request.</strong></span>
+            </label>
+          </div>
+
           <div class="form-row booking-sms-consent" id="booking-sms-consent">
             <label class="booking-consent-label" for="sms-consent">
               <input type="checkbox" id="sms-consent" name="sms_consent" value="yes">
@@ -133,12 +140,12 @@
   </main>
 
   <footer class="footer">
-    <p>© Blendz By Mora. All rights reserved. <a href="terms.html">Terms</a> · <a href="faq.html">FAQ</a> · <a href="privacy.html">Privacy Policy</a></p>
+    <p>© Blendz By Mora. All rights reserved. <a href="terms.html">Terms</a> · <a href="service-agreement.html">Service Agreement</a> · <a href="faq.html">FAQ</a> · <a href="privacy.html">Privacy Policy</a></p>
   </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="config.js?v=6"></script>
-  <script src="app.js?v=34"></script>
+  <script src="config.js?v=7"></script>
+  <script src="app.js?v=35"></script>
 </body>
 </html>

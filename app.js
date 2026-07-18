@@ -906,6 +906,15 @@ function initBookingForm() {
       }
     }
 
+    if (document.getElementById('service-agreement')?.checked !== true) {
+      status.className = 'booking-status error';
+      status.textContent =
+        'Please read and agree to the Service Agreement before submitting your request.';
+      status.style.display = 'block';
+      document.getElementById('booking-contract-consent')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+
     status.className = 'booking-status loading';
     status.textContent = 'Verifying email…';
     status.style.display = 'block';
@@ -946,6 +955,8 @@ function initBookingForm() {
       travel: form.travel?.value || 'No',
       notes,
       sms_consent: document.getElementById('sms-consent')?.checked === true,
+      service_agreement_accepted: true,
+      service_agreement_version: CONFIG.SERVICE_AGREEMENT_VERSION || '2026-07',
     };
 
     const normDate = normalizeDateStr(payload.date);
@@ -1047,9 +1058,13 @@ function initBookingForm() {
       if (hasFormspree) {
         const formData = new FormData();
         const firstName = (bookingPayload.name || '').trim().split(/\s+/)[0] || 'there';
+        const agreementUrl =
+          CONFIG.SERVICE_AGREEMENT_URL || 'https://blendzbymora.com/service-agreement.html';
+        const agreementVersion = CONFIG.SERVICE_AGREEMENT_VERSION || '2026-07';
         const confirmationCopy =
           `Hello ${firstName},\n\n` +
           'Thank you for submitting an appointment request with Blendz By Mora. Below is a copy of the services you requested for your records.\n\n' +
+          `You agreed to our Service Agreement (version ${agreementVersion}). Keep this link for your records:\n${agreementUrl}\n\n` +
           'Our team will review your request and follow up shortly to confirm your appointment by email or phone.\n\n' +
           'Kind regards,\nBlendz By Mora';
         // Shown first in Formspree emails (you + customer CC) — reads as a professional cover note above the fields
@@ -1059,6 +1074,7 @@ function initBookingForm() {
           if (omitFromFormspreeEmail.has(k)) return;
           formData.append(k, v === true || v === false ? String(v) : (v ?? ''));
         });
+        formData.append('Service Agreement URL', agreementUrl);
         formData.append(
           '_subject',
           `Blendz By Mora — appointment request received (${bookingPayload.date} · ${bookingPayload.time})`
@@ -1079,10 +1095,10 @@ function initBookingForm() {
       let successMsg;
       if (smsOptIn) {
         successMsg =
-          'Thank you — your appointment request has been received. A confirmation with your details has been sent to your email. You will also receive a text message with the same information. About one day before your appointment, you will get a reminder text; reply YES to that message to confirm your visit.';
+          'Thank you — your appointment request has been received. A confirmation with your details and Service Agreement link has been sent to your email. You will also receive a text message with the same information. About one day before your appointment, you will get a reminder text; reply YES to that message to confirm your visit.';
       } else if (hasFormspree) {
         successMsg =
-          'Thank you — your appointment request has been received. A confirmation with your details has been sent to your email. We will contact you to finalize your appointment.';
+          'Thank you — your appointment request has been received. A confirmation with your details and Service Agreement link has been sent to your email. We will contact you to finalize your appointment.';
       } else {
         successMsg =
           'Thank you — your appointment request has been received. We will contact you by email or phone to confirm your appointment.';
