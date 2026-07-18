@@ -13,6 +13,7 @@ import {
   parseServicePriceCents,
 } from './lib/square-api.mjs';
 import { notifyBookingConfirmedAfterDeposit } from './lib/booking-notify.mjs';
+import { invoicePayloadFromBooking, saveInvoiceRecord } from './lib/invoice-store.mjs';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -165,9 +166,68 @@ export default async function handler(request) {
         orderId,
         balanceDueDate,
         serviceDate: appointmentDate,
+        serviceLabel: row.service,
+        balanceCents,
+        appointmentLabel,
         accessToken,
         environment,
       });
+    }
+
+    const depositSave = await saveInvoiceRecord(
+      supabase,
+      invoicePayloadFromBooking(row, {
+        recordType: 'deposit_payment',
+        invoiceType: 'deposit',
+        squarePaymentId: payment.id,
+        squareCustomerId: customerId,
+        status: payment.status || 'COMPLETED',
+        description: `Blendz By Mora deposit — ${String(row.service || 'appointment').slice(0, 400)}`,
+        lineItemName: String(row.service || 'Makeup service').slice(0, 512),
+        subtotalCents: depositCents,
+        taxCents: 0,
+        totalCents: depositCents,
+        totalServiceCents: totalCents,
+        depositCents,
+        balanceCents: balanceCents > 0 ? balanceCents : null,
+        dueDate: depositDueDate,
+        squareEnvironment: environment || 'production',
+      })
+    );
+
+    if (!depositSave.ok) {
+      console.warn('[square-deposit-payment] deposit record save failed', depositSave.error);
+    }
+
+    let balanceInvoiceSave = null;
+    if (balanceInvoice) {
+      balanceInvoiceSave = await saveInvoiceRecord(
+        supabase,
+        invoicePayloadFromBooking(row, {
+          recordType: 'square_invoice',
+          invoiceType: 'balance',
+          squareInvoiceId: balanceInvoice.invoiceId,
+          squareOrderId: balanceInvoice.orderId,
+          squareCustomerId: customerId,
+          invoiceNumber: balanceInvoice.invoiceNumber,
+          status: balanceInvoice.status,
+          description: balanceInvoice.description,
+          lineItemName: balanceInvoice.lineItemName,
+          lineItemNote: balanceInvoice.lineItemNote,
+          subtotalCents: balanceInvoice.subtotalCents ?? balanceCents,
+          taxCents: balanceInvoice.taxCents ?? 0,
+          totalCents: balanceInvoice.totalCents ?? balanceCents,
+          totalServiceCents: totalCents,
+          depositCents,
+          balanceCents,
+          dueDate: balanceInvoice.balanceDueDate,
+          publicUrl: balanceInvoice.publicUrl,
+          squareEnvironment: environment || 'production',
+        })
+      );
+      if (!balanceInvoiceSave.ok) {
+        console.warn('[square-deposit-payment] balance invoice save failed', balanceInvoiceSave.error);
+      }
     }
 
     const notify = await notifyBookingConfirmedAfterDeposit(row);
@@ -179,7 +239,10 @@ export default async function handler(request) {
         depositCents,
         balanceCents,
         balanceInvoiceId: balanceInvoice?.invoiceId || null,
+        balanceInvoiceNumber: balanceInvoice?.invoiceNumber || null,
         balanceDueDate: balanceInvoice?.balanceDueDate || balanceDueDate,
+        invoiceRecordId: balanceInvoiceSave?.id || null,
+        depositRecordId: depositSave.id || null,
         emailSent: notify.email?.sent === true,
         smsSent: notify.sms?.sent === true,
       }),

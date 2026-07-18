@@ -11,6 +11,7 @@ import {
   findOrCreateCustomer,
   parseServicePriceCents,
 } from './lib/square-api.mjs';
+import { invoicePayloadFromBooking, saveInvoiceRecord } from './lib/invoice-store.mjs';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -99,6 +100,7 @@ export default async function handler(request) {
 
   const depositDueDate = vegasTodayYmd();
   const balanceDueDate = appointmentDate >= depositDueDate ? appointmentDate : depositDueDate;
+  const appointmentLabel = `${appointmentDate} ${row.time || ''}`.trim();
 
   try {
     const customerId = await findOrCreateCustomer({
@@ -114,7 +116,7 @@ export default async function handler(request) {
       locationId,
       serviceLabel: row.service,
       amountCents,
-      appointmentDate: `${appointmentDate} ${row.time || ''}`.trim(),
+      appointmentDate: appointmentLabel,
       accessToken,
       environment,
     });
@@ -132,11 +134,44 @@ export default async function handler(request) {
       environment,
     });
 
+    const depositCents = Math.round((amountCents * Number(invoice.depositPercent)) / 100);
+    const balanceCents = amountCents - depositCents;
+
+    const invoiceSave = await saveInvoiceRecord(
+      supabase,
+      invoicePayloadFromBooking(row, {
+        recordType: 'square_invoice',
+        invoiceType: 'full',
+        squareInvoiceId: invoice.invoiceId,
+        squareOrderId: invoice.orderId,
+        squareCustomerId: customerId,
+        invoiceNumber: invoice.invoiceNumber,
+        status: invoice.status,
+        description: invoice.description,
+        lineItemName: String(row.service || 'Makeup service').slice(0, 512),
+        subtotalCents: amountCents,
+        taxCents: 0,
+        totalCents: amountCents,
+        totalServiceCents: amountCents,
+        depositCents,
+        balanceCents,
+        dueDate: invoice.balanceDueDate,
+        publicUrl: invoice.publicUrl,
+        squareEnvironment: environment || 'production',
+      })
+    );
+
+    if (!invoiceSave.ok) {
+      console.warn('[square-booking-invoice] invoice record save failed', invoiceSave.error);
+    }
+
     return new Response(
       JSON.stringify({
         ok: true,
         invoiceId: invoice.invoiceId,
+        invoiceNumber: invoice.invoiceNumber,
         publicUrl: invoice.publicUrl,
+        invoiceRecordId: invoiceSave.id || null,
         depositPercent: invoice.depositPercent,
         depositDueDate: invoice.depositDueDate,
         balanceDueDate: invoice.balanceDueDate,

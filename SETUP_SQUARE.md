@@ -58,6 +58,8 @@ These are safe in `config.js` — they are public client IDs (like a Stripe publ
 
 Also required: **`SUPABASE_URL`**, **`SUPABASE_SERVICE_ROLE_KEY`**, **`FORMSPREE_BOOKING_ID`** (same form ID as the booking form — sends confirmation email **after deposit is paid**)
 
+Run **`sql/invoices.sql`** in Supabase to store Square balance invoices and deposit payments linked to bookings.
+
 After saving, **deploy** the site.
 
 ---

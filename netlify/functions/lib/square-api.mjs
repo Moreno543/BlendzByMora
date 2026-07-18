@@ -219,10 +219,20 @@ export async function createAndPublishBalanceInvoice({
   orderId,
   balanceDueDate,
   serviceDate,
+  serviceLabel,
+  balanceCents,
+  appointmentLabel,
   accessToken,
   environment,
   squareVersion,
 }) {
+  const lineItemName = `${String(serviceLabel || 'Makeup service').slice(0, 480)} — balance`;
+  const lineItemNote =
+    `Remaining balance for appointment ${appointmentLabel || serviceDate || 'TBD'}. ` +
+    'Your deposit was paid online when you booked.';
+  const description =
+    'Blendz By Mora — remaining balance for your appointment. Due on your service date.';
+
   const create = await squareFetch({
     path: '/v2/invoices',
     method: 'POST',
@@ -247,8 +257,7 @@ export async function createAndPublishBalanceInvoice({
           buy_now_pay_later: false,
           cash_app_pay: true,
         },
-        description:
-          'Blendz By Mora — remaining balance for your appointment. Due on your service date.',
+        description,
       },
     },
     accessToken,
@@ -272,11 +281,34 @@ export async function createAndPublishBalanceInvoice({
   });
 
   const out = published?.invoice || invoice;
+  const computedBalance = invoicePaymentAmountCents(out, 'BALANCE') ?? balanceCents ?? null;
+
   return {
     invoiceId: out.id,
+    invoiceNumber: out.invoice_number || null,
+    status: out.status || null,
     publicUrl: out.public_url || null,
+    orderId: out.order_id || orderId,
     balanceDueDate,
+    description: out.description || description,
+    saleOrServiceDate: out.sale_or_service_date || serviceDate,
+    balanceCents: computedBalance,
+    lineItemName,
+    lineItemNote,
+    subtotalCents: computedBalance,
+    taxCents: 0,
+    totalCents: computedBalance,
+    invoice: out,
   };
+}
+
+function invoicePaymentAmountCents(invoice, requestType) {
+  const requests = invoice?.payment_requests;
+  if (!Array.isArray(requests)) return null;
+  const match = requests.find((r) => r.request_type === requestType);
+  const money = match?.computed_amount_money || match?.requested_amount_money;
+  const amount = money?.amount;
+  return Number.isFinite(amount) ? amount : null;
 }
 
 export async function createAndPublishDepositInvoice({
@@ -348,11 +380,22 @@ export async function createAndPublishDepositInvoice({
   });
 
   const out = published?.invoice || invoice;
+  const depositCents = invoicePaymentAmountCents(out, 'DEPOSIT');
+  const balanceCents = invoicePaymentAmountCents(out, 'BALANCE');
+
   return {
     invoiceId: out.id,
+    invoiceNumber: out.invoice_number || null,
+    status: out.status || null,
     publicUrl: out.public_url || null,
+    orderId: out.order_id || orderId,
     depositDueDate,
     balanceDueDate,
     depositPercent: pct,
+    depositCents,
+    balanceCents,
+    description: out.description || null,
+    saleOrServiceDate: out.sale_or_service_date || serviceDate,
+    invoice: out,
   };
 }
