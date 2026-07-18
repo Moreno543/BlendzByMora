@@ -134,6 +134,144 @@ export async function createServiceOrder({
   return orderId;
 }
 
+export async function createSquarePayment({
+  bookingId,
+  locationId,
+  sourceId,
+  amountCents,
+  customerId,
+  serviceLabel,
+  accessToken,
+  environment,
+  squareVersion,
+}) {
+  const create = await squareFetch({
+    path: '/v2/payments',
+    method: 'POST',
+    body: {
+      idempotency_key: `pay-deposit-${bookingId}`,
+      source_id: sourceId,
+      amount_money: { amount: amountCents, currency: 'USD' },
+      location_id: locationId,
+      autocomplete: true,
+      ...(customerId ? { customer_id: customerId } : {}),
+      note: `Blendz By Mora deposit — ${String(serviceLabel || 'appointment').slice(0, 400)}`,
+    },
+    accessToken,
+    environment,
+    squareVersion,
+  });
+  const payment = create?.payment;
+  if (!payment?.id) throw new Error('Square payment failed');
+  return payment;
+}
+
+export async function createBalanceOrder({
+  bookingId,
+  locationId,
+  serviceLabel,
+  balanceCents,
+  appointmentDate,
+  accessToken,
+  environment,
+  squareVersion,
+}) {
+  const note =
+    `Remaining balance for appointment ${appointmentDate || 'TBD'}. ` +
+    'Your deposit was paid online when you booked.';
+  const create = await squareFetch({
+    path: '/v2/orders',
+    method: 'POST',
+    body: {
+      idempotency_key: `order-balance-${bookingId}`,
+      order: {
+        location_id: locationId,
+        line_items: [
+          {
+            name: `${String(serviceLabel || 'Makeup service').slice(0, 480)} — balance`,
+            quantity: '1',
+            note,
+            base_price_money: { amount: balanceCents, currency: 'USD' },
+          },
+        ],
+      },
+    },
+    accessToken,
+    environment,
+    squareVersion,
+  });
+  const orderId = create?.order?.id;
+  if (!orderId) throw new Error('Square balance order create failed');
+  return orderId;
+}
+
+export async function createAndPublishBalanceInvoice({
+  bookingId,
+  locationId,
+  customerId,
+  orderId,
+  balanceDueDate,
+  serviceDate,
+  accessToken,
+  environment,
+  squareVersion,
+}) {
+  const create = await squareFetch({
+    path: '/v2/invoices',
+    method: 'POST',
+    body: {
+      idempotency_key: `invoice-balance-${bookingId}`,
+      invoice: {
+        location_id: locationId,
+        order_id: orderId,
+        primary_recipient: { customer_id: customerId },
+        delivery_method: 'EMAIL',
+        sale_or_service_date: serviceDate,
+        payment_requests: [
+          {
+            request_type: 'BALANCE',
+            due_date: balanceDueDate,
+          },
+        ],
+        accepted_payment_methods: {
+          card: true,
+          square_gift_card: true,
+          bank_account: false,
+          buy_now_pay_later: false,
+          cash_app_pay: true,
+        },
+        description:
+          'Blendz By Mora — remaining balance for your appointment. Due on your service date.',
+      },
+    },
+    accessToken,
+    environment,
+    squareVersion,
+  });
+
+  const invoice = create?.invoice;
+  if (!invoice?.id) throw new Error('Square balance invoice create failed');
+
+  const published = await squareFetch({
+    path: `/v2/invoices/${invoice.id}/publish`,
+    method: 'POST',
+    body: {
+      idempotency_key: `publish-balance-${bookingId}`,
+      version: invoice.version,
+    },
+    accessToken,
+    environment,
+    squareVersion,
+  });
+
+  const out = published?.invoice || invoice;
+  return {
+    invoiceId: out.id,
+    publicUrl: out.public_url || null,
+    balanceDueDate,
+  };
+}
+
 export async function createAndPublishDepositInvoice({
   bookingId,
   locationId,

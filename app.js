@@ -748,18 +748,154 @@ async function fetchClientIpForBooking() {
   }
 }
 
-/** Square deposit invoice (optional); skipped if Square env vars unset on Netlify. */
-async function fetchSquareDepositUrl(bookingId) {
-  const res = await fetch('/.netlify/functions/square-booking-invoice', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-    body: JSON.stringify({ bookingId }),
+/** Parse service price from option label (e.g. "Soft Glam - $100" → 10000 cents). */
+function parseBookingServicePriceCents(serviceLabel) {
+  const matches = [...String(serviceLabel || '').matchAll(/\$(\d+(?:\.\d{2})?)/g)];
+  if (!matches.length) return null;
+  const dollars = parseFloat(matches[matches.length - 1][1]);
+  if (!Number.isFinite(dollars) || dollars <= 0) return null;
+  return Math.round(dollars * 100);
+}
+
+function formatUsd(cents) {
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(cents / 100);
+}
+
+function squareWebSdkUrl() {
+  const env = String(CONFIG.SQUARE_ENVIRONMENT || 'production').toLowerCase();
+  return env === 'sandbox'
+    ? 'https://sandbox.web.squarecdn.com/v1/square.js'
+    : 'https://web.squarecdn.com/v1/square.js';
+}
+
+function loadSquareWebSdk() {
+  if (window.Square) return Promise.resolve();
+  if (window.__bbmSquareSdkPromise) return window.__bbmSquareSdkPromise;
+  window.__bbmSquareSdkPromise = new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = squareWebSdkUrl();
+    script.async = true;
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error('Could not load Square payments'));
+    document.head.appendChild(script);
   });
-  const data = await res.json().catch(() => ({}));
-  if (data.skipped) return null;
-  if (data.publicUrl) return data.publicUrl;
-  if (!res.ok) console.warn('[Blendz] Square invoice:', data.error || res.status);
-  return null;
+  return window.__bbmSquareSdkPromise;
+}
+
+let bbmSquareCard = null;
+
+async function mountSquareDepositForm(containerEl) {
+  await loadSquareWebSdk();
+  const appId = String(CONFIG.SQUARE_APPLICATION_ID || '').trim();
+  const locationId = String(CONFIG.SQUARE_LOCATION_ID || '').trim();
+  if (!appId || !locationId) throw new Error('Square payments not configured');
+  if (bbmSquareCard) {
+    try {
+      await bbmSquareCard.destroy();
+    } catch (_) {
+      /* ignore */
+    }
+    bbmSquareCard = null;
+  }
+  const payments = window.Square.payments(appId, locationId);
+  bbmSquareCard = await payments.card();
+  await bbmSquareCard.attach(containerEl);
+}
+
+function bookingDepositConfigured() {
+  return Boolean(
+    String(CONFIG.SQUARE_APPLICATION_ID || '').trim() && String(CONFIG.SQUARE_LOCATION_ID || '').trim()
+  );
+}
+
+/** After booking saves, show Square’s secure card form for the 50% deposit. */
+async function showBookingDepositPayment({ status, bookingId, serviceLabel }) {
+  const totalCents = parseBookingServicePriceCents(serviceLabel);
+  const pct = Number(CONFIG.SQUARE_DEPOSIT_PERCENT || 50);
+  if (!totalCents || !bookingId || !bookingDepositConfigured()) return false;
+
+  const depositCents = Math.round((totalCents * pct) / 100);
+  status.className = 'booking-status success';
+  status.textContent = '';
+  status.style.display = 'block';
+
+  const msg = document.createElement('p');
+  msg.textContent =
+    'Thank you — your appointment request has been received. Enter your card below to pay your deposit and secure your date. The remaining balance will be emailed as a Square invoice due on your service date.';
+  status.appendChild(msg);
+
+  const payBox = document.createElement('div');
+  payBox.className = 'booking-deposit-pay';
+
+  const amountLine = document.createElement('p');
+  amountLine.className = 'booking-deposit-amount';
+  amountLine.innerHTML = `<strong>Deposit due now:</strong> ${formatUsd(depositCents)}`;
+  payBox.appendChild(amountLine);
+
+  const cardWrap = document.createElement('div');
+  cardWrap.id = 'square-card-container';
+  cardWrap.className = 'square-card-container';
+  payBox.appendChild(cardWrap);
+
+  const payErr = document.createElement('p');
+  payErr.className = 'booking-deposit-error';
+  payErr.hidden = true;
+  payBox.appendChild(payErr);
+
+  const payBtn = document.createElement('button');
+  payBtn.type = 'button';
+  payBtn.className = 'btn btn-primary booking-deposit-pay-btn';
+  payBtn.textContent = `Pay ${formatUsd(depositCents)} deposit`;
+  payBox.appendChild(payBtn);
+
+  status.appendChild(payBox);
+
+  try {
+    await mountSquareDepositForm(cardWrap);
+  } catch (err) {
+    payErr.hidden = false;
+    payErr.textContent =
+      'Card payment is unavailable right now. We will contact you with payment instructions.';
+    payBtn.disabled = true;
+    console.warn('[Blendz] Square card mount failed', err);
+    return true;
+  }
+
+  payBtn.addEventListener('click', async () => {
+    payErr.hidden = true;
+    payBtn.disabled = true;
+    payBtn.textContent = 'Processing…';
+    try {
+      const tokenResult = await bbmSquareCard.tokenize();
+      if (tokenResult.status !== 'OK') {
+        const detail =
+          tokenResult.errors?.[0]?.message || 'Could not read card. Check the details and try again.';
+        throw new Error(detail);
+      }
+      const res = await fetch('/.netlify/functions/square-deposit-payment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({ bookingId, sourceId: tokenResult.token }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) {
+        throw new Error(data.error || 'Payment failed. Please try again.');
+      }
+      status.textContent = '';
+      const done = document.createElement('p');
+      done.textContent =
+        'Deposit paid — thank you! Your appointment is secured. Square will email you an invoice for the remaining balance due on your service date.';
+      status.appendChild(done);
+      payBox.remove();
+    } catch (err) {
+      payErr.hidden = false;
+      payErr.textContent = err instanceof Error ? err.message : 'Payment failed.';
+      payBtn.disabled = false;
+      payBtn.textContent = `Pay ${formatUsd(depositCents)} deposit`;
+    }
+  });
+
+  return true;
 }
 
 /** Reoon email verification via Netlify (optional); skipped if REOON_API_KEY unset. */
@@ -1078,7 +1214,7 @@ function initBookingForm() {
           `Hello ${firstName},\n\n` +
           'Thank you for submitting an appointment request with Blendz By Mora. Below is a copy of the services you requested for your records.\n\n' +
           `You agreed to our Service Agreement (version ${agreementVersion}). Keep this link for your records:\n${agreementUrl}\n\n` +
-          'To secure your appointment, a 50% deposit is due upon booking. You will receive a Square invoice by email with payment instructions; the remaining balance is due on your service date.\n\n' +
+          'To secure your appointment, a 50% deposit is due upon booking. After you submit, you can pay by card on the booking page; the remaining balance will be invoiced for your service date.\n\n' +
           'Our team will review your request and follow up shortly to confirm your appointment by email or phone.\n\n' +
           'Kind regards,\nBlendz By Mora';
         // Shown first in Formspree emails (you + customer CC) — reads as a professional cover note above the fields
@@ -1104,50 +1240,29 @@ function initBookingForm() {
         if (!res.ok) throw new Error('Formspree failed');
       }
 
-      let depositUrl = null;
-      if (bookingId) {
-        status.className = 'booking-status loading';
-        status.textContent = 'Preparing your deposit invoice…';
-        status.style.display = 'block';
-        try {
-          depositUrl = await fetchSquareDepositUrl(bookingId);
-        } catch (err) {
-          console.warn('[Blendz] Square deposit invoice failed', err);
-        }
+      let depositShown = false;
+      if (bookingId && bookingDepositConfigured()) {
+        depositShown = await showBookingDepositPayment({
+          status,
+          bookingId,
+          serviceLabel: bookingPayload.service,
+        });
       }
 
-      status.className = 'booking-status success';
-      const smsOptIn = bookingPayload.sms_consent === true;
-      let successMsg;
-      if (depositUrl) {
-        successMsg =
-          'Thank you — your appointment request has been received. Pay your 50% deposit now to secure your date. Square also emailed you an invoice; the remaining balance is due on your service date.';
-      } else if (smsOptIn) {
-        successMsg =
-          'Thank you — your appointment request has been received. A confirmation with your details and Service Agreement link has been sent to your email. You will also receive a text message with the same information. About one day before your appointment, you will get a reminder text; reply YES to that message to confirm your visit.';
-      } else if (hasFormspree) {
-        successMsg =
-          'Thank you — your appointment request has been received. A confirmation with your details and Service Agreement link has been sent to your email. We will contact you to finalize your appointment.';
-      } else {
-        successMsg =
-          'Thank you — your appointment request has been received. We will contact you by email or phone to confirm your appointment.';
-      }
-      if (depositUrl) {
-        status.textContent = '';
-        const msg = document.createElement('p');
-        msg.textContent = successMsg;
-        status.appendChild(msg);
-        const linkWrap = document.createElement('p');
-        linkWrap.className = 'booking-deposit-link';
-        const link = document.createElement('a');
-        link.href = depositUrl;
-        link.className = 'btn btn-primary';
-        link.target = '_blank';
-        link.rel = 'noopener noreferrer';
-        link.textContent = 'Pay 50% deposit';
-        linkWrap.appendChild(link);
-        status.appendChild(linkWrap);
-      } else {
+      if (!depositShown) {
+        status.className = 'booking-status success';
+        const smsOptIn = bookingPayload.sms_consent === true;
+        let successMsg;
+        if (smsOptIn) {
+          successMsg =
+            'Thank you — your appointment request has been received. A confirmation with your details and Service Agreement link has been sent to your email. You will also receive a text message with the same information. About one day before your appointment, you will get a reminder text; reply YES to that message to confirm your visit.';
+        } else if (hasFormspree) {
+          successMsg =
+            'Thank you — your appointment request has been received. A confirmation with your details and Service Agreement link has been sent to your email. We will contact you to finalize your appointment.';
+        } else {
+          successMsg =
+            'Thank you — your appointment request has been received. We will contact you by email or phone to confirm your appointment.';
+        }
         status.textContent = successMsg;
       }
       form.reset();

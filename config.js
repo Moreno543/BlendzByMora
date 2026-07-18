@@ -52,6 +52,12 @@ const CONFIG = {
   FORMSPREE_BOOKING_ID: 'xvzwvlyr',  // formspree.io/f/xvzwvlyr
   FORMSPREE_REVIEW_ID: '',   // Optional: for review form submissions
 
+  // Square Web Payments — public IDs for the booking page card form (Developer Dashboard → Credentials)
+  SQUARE_APPLICATION_ID: 'sq0idp-tzKG8DuP12asz48q9bJ8PQ',
+  SQUARE_LOCATION_ID: 'LZZJN7YKHA3YF',
+  SQUARE_ENVIRONMENT: 'production', // production | sandbox
+  SQUARE_DEPOSIT_PERCENT: 50,
+
   // Google review link - direct link for customers to leave a review
   GOOGLE_REVIEW_URL: 'https://g.page/r/CShCAdf8bWHkEBM/review',
   // Or use Place ID for direct writereview link: https://developers.google.com/maps/documentation/places/web-service/place-id

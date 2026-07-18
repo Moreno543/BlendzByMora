@@ -722,6 +722,33 @@ section h2 {
   text-decoration: none;
 }
 
+.booking-deposit-pay {
+  margin-top: 1.25rem;
+  padding: 1.25rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  text-align: left;
+}
+
+.booking-deposit-amount {
+  margin: 0 0 1rem;
+}
+
+.square-card-container {
+  min-height: 56px;
+  margin-bottom: 1rem;
+}
+
+.booking-deposit-pay-btn {
+  width: 100%;
+}
+
+.booking-deposit-error {
+  color: #f87171;
+  margin: 0 0 0.75rem;
+  font-size: 0.95rem;
+}
+
 /* Reviews */
 .reviews-page {
   padding-top: 5rem;
