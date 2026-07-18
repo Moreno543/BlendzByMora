@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "build": "echo \"No static build step — publishing HTML/CSS/JS as-is.\"",
     "dev": "npx netlify dev",
     "start": "npx netlify dev"
   },

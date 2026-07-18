@@ -44,7 +44,7 @@ Or: Developer Dashboard → **Locations** tab for the linked seller account.
 
 | Variable | Example | Required |
 |----------|---------|----------|
-| **`SQUARE_ACCESS_TOKEN`** | `EAAA...` | Yes |
+| **`SQUARE_ACCESS_TOKEN`** | Production access token from Developer Dashboard | Yes |
 | **`SQUARE_LOCATION_ID`** | `LXXXXXXXX` | Yes |
 | **`SQUARE_ENVIRONMENT`** | `production` or `sandbox` | Yes |
 | **`SQUARE_DEPOSIT_PERCENT`** | `50` | No (default 50) |
