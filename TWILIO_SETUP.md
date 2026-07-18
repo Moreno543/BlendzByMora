@@ -49,7 +49,7 @@ ALTER TABLE bookings ADD COLUMN IF NOT EXISTS sms_consent BOOLEAN NOT NULL DEFAU
 | **`TWILIO_MESSAGING_SERVICE_SID`** | **Recommended** | Twilio → **Messaging** → **Services** → your service (e.g. BlendzByMora) — copy **Messaging Service SID** (starts with `MG`). **Use this for A2P 10DLC:** outbound SMS then go through your approved campaign (fixes many **Undelivered** / **30034** issues when logs show **Service** empty). |
 | **`TWILIO_FROM_NUMBER`** | Yes if no MSID | Your Twilio number in **E.164**, e.g. `+17253301234`. Required when **`TWILIO_MESSAGING_SERVICE_SID`** is not set; if MSID **is** set, the number should still be in the service **Sender pool** (Twilio may pick it automatically). |
 | **`TWILIO_OWNER_NOTIFY_PHONE`** | No | **Your** cell in E.164 — get an SMS when someone texts **YES**, e.g. `+17253527193` |
-| **`FORMSPREE_BOOKING_ID`** | No | Same Formspree form ID as the booking form (e.g. `xvzwvlyr`) — sends an **email** to your Formspree inbox (**BlendzByMora@gmail.com**) when a client texts **YES** |
+| **`FORMSPREE_BOOKING_ID`** | No | Same Formspree form ID as the booking form (e.g. your form slug) — sends an **email** to your Formspree inbox (**BlendzByMora@gmail.com**) when a client texts **YES** |
 | **`TWILIO_SMS_DISABLED`** | No | Set to `true` to turn **off** all outbound/inbound SMS processing in functions (local testing) |
 | **`TWILIO_LOOKUP_DISABLED`** | No | Set to `true` to **skip** [Twilio Lookup](https://www.twilio.com/docs/lookup) on the booking form (saves API cost while testing locally). **Production:** omit this or leave unset so phone numbers are validated as real/routable (no SMS code — same flow as email checks). Uses the same **`TWILIO_ACCOUNT_SID`** and **`TWILIO_AUTH_TOKEN`**. |
 

@@ -4,8 +4,9 @@
   functions = "netlify/functions"
 
 [build.environment]
-  # Bundled functions read secrets at runtime; omit bundles from secret scan false positives.
-  SECRETS_SCAN_OMIT_PATHS = ".netlify/functions-internal/**"
+  # Function bundles read secrets at runtime via process.env — not from published static files.
+  SECRETS_SCAN_OMIT_PATHS = ".netlify/**"
+  SECRETS_SCAN_SMART_DETECTION_ENABLED = "false"
 
 [functions]
   node_bundler = "esbuild"

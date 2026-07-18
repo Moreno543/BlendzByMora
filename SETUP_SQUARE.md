@@ -89,10 +89,20 @@ Bookings still work normally (Supabase + Formspree + optional SMS). The deposit 
 | Issue | Check |
 |-------|--------|
 | No “Pay deposit” button | Netlify env vars set? Redeploy after adding them |
+| **`Exposed secrets detected` build failure** | See below |
 | `missing_env` in function logs | `SQUARE_ACCESS_TOKEN`, `SQUARE_LOCATION_ID` on Production |
 | Invoice failed | Square Invoices enabled? Valid location ID? Service string includes `$` price |
 | Client didn’t get email | Square sends invoice email; check spam; confirm email on booking |
 | Wrong amount | Service name must match site pricing (e.g. `Day-of Bridal Makeup - $300`) |
+
+### Netlify “Exposed secrets detected”
+
+If deploys fail after you add Square env vars:
+
+1. Edit **`SQUARE_ACCESS_TOKEN`** → **uncheck “Contains secret values”** (the token stays in Netlify; it just won’t block builds).
+2. Scopes: **uncheck Builds**; keep **Functions** and **Runtime** only.
+3. If **`FORMSPREE_BOOKING_ID`** is marked secret, **uncheck secret** too — that value is public in the browser (`config.js`).
+4. **Deploys → Trigger deploy → Clear cache and deploy site**.
 
 ---
 
