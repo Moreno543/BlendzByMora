@@ -12,6 +12,7 @@ import {
   findOrCreateCustomer,
   parseServicePriceCents,
 } from './lib/square-api.mjs';
+import { notifyBookingConfirmedAfterDeposit } from './lib/booking-notify.mjs';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -84,7 +85,7 @@ export default async function handler(request) {
 
   const { data: row, error: qerr } = await supabase
     .from('bookings')
-    .select('id, name, phone, service, date, time, email')
+    .select('id, name, phone, service, date, time, email, travel, notes, sms_consent')
     .eq('id', bookingId)
     .maybeSingle();
 
@@ -169,6 +170,8 @@ export default async function handler(request) {
       });
     }
 
+    const notify = await notifyBookingConfirmedAfterDeposit(row);
+
     return new Response(
       JSON.stringify({
         ok: true,
@@ -177,6 +180,8 @@ export default async function handler(request) {
         balanceCents,
         balanceInvoiceId: balanceInvoice?.invoiceId || null,
         balanceDueDate: balanceInvoice?.balanceDueDate || balanceDueDate,
+        emailSent: notify.email?.sent === true,
+        smsSent: notify.sms?.sent === true,
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

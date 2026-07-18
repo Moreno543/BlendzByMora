@@ -5,6 +5,7 @@
  * Optional: TWILIO_SMS_DISABLED=true to skip sending (e.g. while testing)
  */
 import { createClient } from '@supabase/supabase-js';
+import { buildBookingSmsBody, sendBookingConfirmationSms } from './lib/booking-notify.mjs';
 import { hasOutboundSender, twilioMessageParams } from './lib/twilio-send.mjs';
 
 const corsHeaders = {
@@ -21,19 +22,7 @@ function toE164(phone) {
 }
 
 function buildBody(row) {
-  const name = String(row.name || 'there').trim();
-  const first = name.split(/\s+/)[0] || 'there';
-  const service = String(row.service || 'Appointment').slice(0, 80);
-  const date = String(row.date || '');
-  const time = String(row.time || '');
-  let text = `Blendz By Mora: Hi ${first}! We received your request — ${service} on ${date} at ${time}. We'll confirm by email or phone. Reminder ~24h before appt. Msg & data rates may apply. Reply HELP for help, STOP to opt out.`;
-  if (text.length > 320) {
-    text = `Blendz By Mora: Hi ${first}! Request: ${service} on ${date} at ${time}. We'll confirm soon. Msg & data rates may apply. Reply HELP for help, STOP to opt out.`;
-  }
-  if (text.length > 320) {
-    text = text.slice(0, 317) + '...';
-  }
-  return text;
+  return buildBookingSmsBody(row, { depositPaid: false });
 }
 
 export default async function handler(request) {

@@ -56,7 +56,7 @@ These are safe in `config.js` — they are public client IDs (like a Stripe publ
 | **`SQUARE_ENVIRONMENT`** | Yes | **No** — value `production` appears in code |
 | **`SQUARE_DEPOSIT_PERCENT`** | No | **No** |
 
-Also required: **`SUPABASE_URL`**, **`SUPABASE_SERVICE_ROLE_KEY`**
+Also required: **`SUPABASE_URL`**, **`SUPABASE_SERVICE_ROLE_KEY`**, **`FORMSPREE_BOOKING_ID`** (same form ID as the booking form — sends confirmation email **after deposit is paid**)
 
 After saving, **deploy** the site.
 

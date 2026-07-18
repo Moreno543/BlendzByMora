@@ -821,7 +821,7 @@ async function showBookingDepositPayment({ status, bookingId, serviceLabel }) {
 
   const msg = document.createElement('p');
   msg.textContent =
-    'Thank you — your appointment request has been received. Enter your card below to pay your deposit and secure your date. The remaining balance will be emailed as a Square invoice due on your service date.';
+    'Your appointment details are saved. Pay your deposit below to secure your date. Your confirmation email and text (if you opted in) will be sent after payment.';
   status.appendChild(msg);
 
   const payBox = document.createElement('div');
@@ -887,8 +887,15 @@ async function showBookingDepositPayment({ status, bookingId, serviceLabel }) {
       }
       status.textContent = '';
       const done = document.createElement('p');
-      done.textContent =
+      let doneText =
         'Deposit paid — thank you! Your appointment is secured. Square will email you an invoice for the remaining balance due on your service date.';
+      if (data.emailSent) {
+        doneText += ' A confirmation has been sent to your email.';
+      }
+      if (data.smsSent) {
+        doneText += ' You will also receive a confirmation text.';
+      }
+      done.textContent = doneText;
       status.appendChild(done);
       payBox.remove();
     } catch (err) {
@@ -1187,7 +1194,11 @@ function initBookingForm() {
           throw error;
         }
         bookingId = insertedId != null ? String(insertedId).trim() : '';
-        if (bookingId) {
+      }
+
+      const deferConfirmations = Boolean(bookingId && bookingDepositConfigured());
+
+      if (bookingId && !deferConfirmations) {
           fetch('/.netlify/functions/booking-sms', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
@@ -1200,15 +1211,14 @@ function initBookingForm() {
               }
             })
             .catch((err) => console.warn('[Blendz] SMS request error:', err));
-        } else {
+      } else if (!bookingId && hasSupabase) {
           console.warn(
             '[Blendz] No booking id after insert_booking_from_client — SMS skipped. Run sql/rls_secure_anon_access.sql and confirm the RPC exists.'
           );
-        }
       }
 
-      // 2. Send to Formspree (email to you + CC copy to customer — same body for both, so omit internal-only fields)
-      if (hasFormspree) {
+      // 2. Send to Formspree (email to you + CC copy to customer — deferred until deposit when Square is configured)
+      if (hasFormspree && !deferConfirmations) {
         const formData = new FormData();
         const firstName = (bookingPayload.name || '').trim().split(/\s+/)[0] || 'there';
         const agreementUrl =
