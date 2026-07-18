@@ -18,6 +18,11 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
+/** Dynamic key — keeps esbuild from inlining secret env vars into the function bundle. */
+function env(name) {
+  return String(process.env[name] ?? '').trim();
+}
+
 export default async function handler(request) {
   if (request.method === 'OPTIONS') {
     return new Response(null, { status: 204, headers: corsHeaders });
@@ -30,12 +35,12 @@ export default async function handler(request) {
     });
   }
 
-  const accessToken = (process.env.SQUARE_ACCESS_TOKEN || '').trim();
-  const locationId = (process.env.SQUARE_LOCATION_ID || '').trim();
-  const supabaseUrl = process.env.SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const environment = (process.env.SQUARE_ENVIRONMENT || 'production').trim();
-  const depositPercent = Number(process.env.SQUARE_DEPOSIT_PERCENT || 50);
+  const accessToken = env('SQUARE_ACCESS_TOKEN');
+  const locationId = env('SQUARE_LOCATION_ID');
+  const supabaseUrl = env('SUPABASE_URL');
+  const serviceKey = env('SUPABASE_SERVICE_ROLE_KEY');
+  const environment = env('SQUARE_ENVIRONMENT') || 'production';
+  const depositPercent = Number(env('SQUARE_DEPOSIT_PERCENT') || 50);
 
   if (!accessToken || !locationId || !supabaseUrl || !serviceKey) {
     return new Response(JSON.stringify({ ok: true, skipped: true, reason: 'missing_env' }), {

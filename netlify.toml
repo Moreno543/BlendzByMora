@@ -3,6 +3,10 @@
   publish = "."
   functions = "netlify/functions"
 
+[build.environment]
+  # Bundled functions read secrets at runtime; omit bundles from secret scan false positives.
+  SECRETS_SCAN_OMIT_PATHS = ".netlify/functions-internal/**"
+
 [functions]
   node_bundler = "esbuild"
 
