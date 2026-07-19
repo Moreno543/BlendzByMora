@@ -93,7 +93,7 @@ export default async function handler(request) {
 
   const { data: row, error: qerr } = await supabase
     .from('bookings')
-    .select('id, name, phone, service, date, time, email, travel, notes, sms_consent')
+    .select('id, name, phone, service, date, time, email, travel, notes, sms_consent, deposit_paid_at')
     .eq('id', bookingId)
     .maybeSingle();
 
@@ -102,6 +102,32 @@ export default async function handler(request) {
       status: 404,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
+  }
+
+  if (row.deposit_paid_at) {
+    return new Response(JSON.stringify({ ok: true, alreadyPaid: true, bookingId }), {
+      status: 200,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+
+  const { data: slotTaken } = await supabase
+    .from('bookings')
+    .select('id')
+    .eq('date', row.date)
+    .eq('time', row.time)
+    .not('deposit_paid_at', 'is', null)
+    .neq('id', bookingId)
+    .maybeSingle();
+
+  if (slotTaken?.id) {
+    return new Response(
+      JSON.stringify({
+        ok: false,
+        error: 'That time was just booked by someone else. Please go back and choose another slot.',
+      }),
+      { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
   }
 
   const totalCents = parseServicePriceCents(row.service);
@@ -255,6 +281,16 @@ export default async function handler(request) {
 
     const achPending = isAch && String(payment.status || '').toUpperCase() === 'PENDING';
     const notify = await notifyBookingConfirmedAfterDeposit(row, { paymentMethod, achPending });
+
+    const paidAt = new Date().toISOString();
+    const { error: paidErr } = await supabase
+      .from('bookings')
+      .update({ deposit_paid_at: paidAt })
+      .eq('id', bookingId)
+      .is('deposit_paid_at', null);
+    if (paidErr) {
+      console.warn('[square-deposit-payment] deposit_paid_at update failed', paidErr);
+    }
 
     return new Response(
       JSON.stringify({

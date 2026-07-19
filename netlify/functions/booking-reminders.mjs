@@ -93,6 +93,7 @@ export default async function handler() {
     .from('bookings')
     .select('id, name, phone, service, date, time, reminder_sent_at')
     .is('reminder_sent_at', null)
+    .not('deposit_paid_at', 'is', null)
     .gte('date', minDate)
     .lte('date', maxDate);
 

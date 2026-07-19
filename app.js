@@ -1484,6 +1484,7 @@ function initBookingForm() {
           p_notes: bookingPayload.notes || null,
           p_sms_consent: bookingPayload.sms_consent === true,
           p_client_ip: bookingPayload.client_ip || null,
+          p_pending_deposit: bookingDepositConfigured(),
         });
         if (error) {
           const em = String(error.message || '');

@@ -139,6 +139,7 @@ export default async function handler(request) {
   const { data: rows, error: qerr } = await supabase
     .from('bookings')
     .select('id,name,phone,service,date,time')
+    .not('deposit_paid_at', 'is', null)
     .gte('date', today)
     .lte('date', end)
     .order('date', { ascending: true })

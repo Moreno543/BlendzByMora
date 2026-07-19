@@ -4,11 +4,12 @@
 -- Prereqs (no-op if already applied):
 ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS client_ip TEXT;
 ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS sms_consent BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS deposit_paid_at TIMESTAMPTZ;
 --
 -- Effect:
 -- - Anon can INSERT bookings/reviews (unchanged).
 -- - Anon CANNOT SELECT rows from bookings/reviews (no scraping PII / full tables).
--- - Slot availability uses get_booked_times(date) → only times for that date.
+-- - Slot availability uses get_booked_times(date) → only times with deposit_paid_at set.
 -- - New bookings use insert_booking_from_client(...) → returns id for SMS (no broad SELECT).
 -- - Review carousel uses list_reviews_public(limit) → same fields the site shows publicly.
 --
@@ -27,7 +28,8 @@ STABLE
 AS $$
   SELECT b.time AS slot_time
   FROM public.bookings b
-  WHERE b.date = p_date;
+  WHERE b.date = p_date
+    AND b.deposit_paid_at IS NOT NULL;
 $$;
 
 REVOKE ALL ON FUNCTION public.get_booked_times(date) FROM PUBLIC;
@@ -46,7 +48,8 @@ CREATE OR REPLACE FUNCTION public.insert_booking_from_client(
   p_travel text DEFAULT 'No',
   p_notes text DEFAULT NULL,
   p_sms_consent boolean DEFAULT false,
-  p_client_ip text DEFAULT NULL
+  p_client_ip text DEFAULT NULL,
+  p_pending_deposit boolean DEFAULT false
 )
 RETURNS uuid
 LANGUAGE plpgsql
@@ -72,7 +75,8 @@ BEGIN
     travel,
     notes,
     sms_consent,
-    client_ip
+    client_ip,
+    deposit_paid_at
   )
   VALUES (
     trim(p_service),
@@ -84,7 +88,8 @@ BEGIN
     v_travel,
     NULLIF(trim(COALESCE(p_notes, '')), ''),
     COALESCE(p_sms_consent, false),
-    NULLIF(trim(COALESCE(p_client_ip, '')), '')
+    NULLIF(trim(COALESCE(p_client_ip, '')), ''),
+    CASE WHEN COALESCE(p_pending_deposit, false) THEN NULL ELSE NOW() END
   )
   RETURNING id INTO new_id;
 
@@ -93,10 +98,10 @@ END;
 $$;
 
 REVOKE ALL ON FUNCTION public.insert_booking_from_client(
-  text, date, text, text, text, text, text, text, boolean, text
+  text, date, text, text, text, text, text, text, boolean, text, boolean
 ) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.insert_booking_from_client(
-  text, date, text, text, text, text, text, text, boolean, text
+  text, date, text, text, text, text, text, text, boolean, text, boolean
 ) TO anon, authenticated;
 
 -- ---------------------------------------------------------------------------

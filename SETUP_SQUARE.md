@@ -66,6 +66,8 @@ If your `invoices` table already exists with `*_cents` integer columns, run **`s
 
 Run **`sql/webhook_events.sql`** in Supabase so refund notification emails are not sent twice.
 
+Run **`sql/bookings_deposit_paid_at.sql`** in Supabase so a date is **only held after the deposit is paid**. Submitting the form without paying no longer blocks that time slot.
+
 After saving, **deploy** the site.
 
 ---
