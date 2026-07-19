@@ -4,6 +4,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { isValidSquareWebhookSignature } from './lib/square-webhook-verify.mjs';
 import { sendRefundNotificationEmails } from './lib/refund-notify.mjs';
+import { sendInvoicePaidOwnerNotifications } from './lib/invoice-paid-notify.mjs';
 import { getSquarePayment } from './lib/square-api.mjs';
 
 function env(name) {
@@ -47,6 +48,83 @@ function invoiceRefundAmountCents(invoice) {
     if (Number.isFinite(completed)) total += completed;
   }
   return total > 0 ? total : null;
+}
+
+function invoicePaidAmountCents(invoice) {
+  const requests = invoice?.payment_requests;
+  if (!Array.isArray(requests)) return null;
+  let total = 0;
+  for (const req of requests) {
+    const completed = req?.total_completed_amount_money?.amount;
+    if (Number.isFinite(completed)) total += completed;
+  }
+  return total > 0 ? total : null;
+}
+
+function invoiceIsFullyPaid(invoice) {
+  return String(invoice?.status || '').toUpperCase() === 'PAID';
+}
+
+async function lookupInvoiceRecord(supabase, squareInvoiceId) {
+  if (!squareInvoiceId) return null;
+
+  const { data: invoiceRow, error } = await supabase
+    .from('invoices')
+    .select(
+      'id, booking_id, invoice_type, status, invoice_number, customer_name, customer_email, customer_phone, service_label, service_date, appointment_time, total_cents, balance_cents, deposit_cents, total_service_cents'
+    )
+    .eq('square_invoice_id', squareInvoiceId)
+    .maybeSingle();
+
+  if (error) {
+    console.warn('[square-webhook] invoice record lookup failed', error.message);
+    return null;
+  }
+  return invoiceRow;
+}
+
+async function bookingDetailsFromInvoiceRow(supabase, invoiceRow) {
+  if (!invoiceRow) return null;
+
+  if (invoiceRow.customer_name || invoiceRow.customer_email) {
+    return {
+      customerName: invoiceRow.customer_name,
+      customerEmail: invoiceRow.customer_email,
+      customerPhone: invoiceRow.customer_phone,
+      serviceLabel: invoiceRow.service_label,
+      serviceDate: invoiceRow.service_date,
+      appointmentTime: invoiceRow.appointment_time,
+      bookingId: invoiceRow.booking_id,
+      amountCents: invoiceRow.total_cents,
+      invoiceType: invoiceRow.invoice_type,
+      invoiceNumber: invoiceRow.invoice_number,
+      invoiceStatus: invoiceRow.status,
+    };
+  }
+
+  if (!invoiceRow.booking_id) return null;
+
+  const { data: booking } = await supabase
+    .from('bookings')
+    .select('id, name, email, phone, service, date, time')
+    .eq('id', invoiceRow.booking_id)
+    .maybeSingle();
+
+  if (!booking) return null;
+
+  return {
+    customerName: booking.name,
+    customerEmail: booking.email,
+    customerPhone: booking.phone,
+    serviceLabel: booking.service,
+    serviceDate: String(booking.date || '').slice(0, 10),
+    appointmentTime: booking.time,
+    bookingId: booking.id,
+    amountCents: invoiceRow.total_cents,
+    invoiceType: invoiceRow.invoice_type,
+    invoiceNumber: invoiceRow.invoice_number,
+    invoiceStatus: invoiceRow.status,
+  };
 }
 
 /** @returns {{ duplicate: boolean, dedupeSkipped?: boolean }} */
@@ -265,6 +343,63 @@ async function handlePaymentRefund(supabase, payload, eventType) {
   };
 }
 
+async function handleInvoicePaymentMade(supabase, payload) {
+  const invoice = extractInvoice(payload);
+  if (!invoice?.id) {
+    return { ok: true, ignored: true, reason: 'no_invoice' };
+  }
+
+  if (!invoiceIsFullyPaid(invoice)) {
+    return { ok: true, ignored: true, status: invoice.status || 'unknown', reason: 'not_fully_paid' };
+  }
+
+  const invoiceRow = await lookupInvoiceRecord(supabase, invoice.id);
+  if (!invoiceRow) {
+    return { ok: true, ignored: true, reason: 'unknown_invoice' };
+  }
+
+  if (String(invoiceRow.status || '').toUpperCase() === 'PAID') {
+    return { ok: true, ignored: true, reason: 'already_notified' };
+  }
+
+  const invoiceType = String(invoiceRow.invoice_type || '').toLowerCase();
+  if (invoiceType !== 'balance' && invoiceType !== 'full') {
+    return { ok: true, ignored: true, reason: 'unsupported_invoice_type', invoiceType };
+  }
+
+  let details = await bookingDetailsFromInvoiceRow(supabase, invoiceRow);
+  details = bookingFromSquareInvoice(invoice, details);
+  details.invoiceType = invoiceType;
+  details.invoiceNumber = invoiceRow.invoice_number || invoice.invoice_number || null;
+  details.amountCents =
+    invoiceRow.total_cents ?? invoicePaidAmountCents(invoice) ?? details.amountCents ?? null;
+
+  const notify = await sendInvoicePaidOwnerNotifications({
+    customerName: details.customerName,
+    customerEmail: details.customerEmail,
+    customerPhone: details.customerPhone,
+    serviceLabel: details.serviceLabel,
+    serviceDate: details.serviceDate,
+    appointmentTime: details.appointmentTime,
+    amountCents: details.amountCents,
+    invoiceNumber: details.invoiceNumber,
+    invoiceType,
+  });
+
+  await supabase
+    .from('invoices')
+    .update({ status: 'PAID', updated_at: new Date().toISOString() })
+    .eq('square_invoice_id', invoice.id);
+
+  return {
+    ok: true,
+    eventType: 'invoice.payment_made',
+    invoiceId: invoice.id,
+    emailSent: notify.emailSent === true,
+    smsSent: notify.smsSent === true,
+  };
+}
+
 async function handleInvoiceRefunded(supabase, payload, eventType) {
   const invoice = extractInvoice(payload);
   if (!invoice?.id) {
@@ -374,14 +509,16 @@ export default async function handler(request) {
   let result;
   if (eventType.startsWith('refund.')) {
     result = await handlePaymentRefund(supabase, payload, eventType);
+  } else if (eventType === 'invoice.payment_made') {
+    result = await handleInvoicePaymentMade(supabase, payload);
   } else if (eventType === 'invoice.refunded') {
     result = await handleInvoiceRefunded(supabase, payload, eventType);
   } else {
     result = { ok: true, ignored: true, eventType };
   }
 
-  if (result.emailSent === false && !result.ignored && !result.duplicate) {
-    console.error('[square-webhook] email not sent', result);
+  if (result.emailSent === false && result.smsSent === false && !result.ignored && !result.duplicate) {
+    console.error('[square-webhook] owner notification not sent', result);
   }
 
   return new Response(JSON.stringify(result), {

@@ -68,11 +68,17 @@ After saving, **deploy** the site.
 
 ---
 
-## Step 5 — Refund emails (webhook)
+## Step 5 — Square webhooks (refunds + invoice paid alerts)
 
+### Refunds
 When you issue a **refund in Square**, the client and you both receive a **Formspree email** (client is CC’d).
 
-1. [developer.squareup.com/apps](https://developer.squareup.com/apps) → your app → **Webhooks** → **Add subscription**
+### Balance invoice paid
+When a client **pays their remaining balance invoice** (or pays a full Square invoice), you get:
+- **Email** to your Formspree inbox (**BlendzByMora@gmail.com**)
+- **SMS** to **`TWILIO_OWNER_NOTIFY_PHONE`** if Twilio is configured (same as YES-reply alerts)
+
+1. [developer.squareup.com/apps](https://developer.squareup.com/apps) → your app → **Webhooks** → your subscription (or **Add subscription**)
 2. **Notification URL** (use your live domain exactly):
 
    `https://blendzbymora.com/.netlify/functions/square-webhook`
@@ -81,14 +87,16 @@ When you issue a **refund in Square**, the client and you both receive a **Forms
 
    `https://www.blendzbymora.com/.netlify/functions/square-webhook`
 
-3. Subscribe to events: **`refund.created`**, **`refund.updated`**
+3. Subscribe to events:
+   - **`refund.created`**, **`refund.updated`**, **`invoice.refunded`**
+   - **`invoice.payment_made`** — notifies you when a client pays their balance invoice in full
 4. Copy the subscription **Signature key**
 5. In **Netlify → Environment variables**, add:
    - **`SQUARE_WEBHOOK_SIGNATURE_KEY`** = signature key (mark as secret)
    - **`SQUARE_WEBHOOK_NOTIFICATION_URL`** = the **exact same URL** as step 2 (no trailing slash)
 6. **Deploy** the site
 
-Square also sends its own refund receipt to the customer; this adds your branded confirmation email to both of you via Formspree.
+Square also sends its own refund receipt to the customer; Formspree adds your branded confirmation on refunds.
 
 ---
 
@@ -134,6 +142,7 @@ What customers see on their card activity (e.g. **BlendzByMora Service**) comes 
 | Payment failed | Netlify function logs → `square-deposit-payment`; access token + location ID |
 | No balance invoice email | Square Inboxes / spam; Invoices enabled on account |
 | No refund emails | Square → Webhooks → **Logs** (403 = bad signature key or URL mismatch). Run **`sql/webhook_events.sql`**. Set **`FORMSPREE_BOOKING_ID`** on Netlify (Functions scope). |
+| No alert when client pays balance invoice | Add **`invoice.payment_made`** to Square webhook events. Redeploy. Set **`TWILIO_OWNER_NOTIFY_PHONE`** for SMS. |
 | Amex still says “SERVICE TRANSACTION” | **Pending** charges use a generic label until they post (1–3 days). Set Square **Business name** to BlendzByMora; only **new** payments use the updated descriptor. |
 
 ---
