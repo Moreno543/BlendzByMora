@@ -260,7 +260,7 @@ async function handlePaymentRefund(supabase, payload, eventType) {
     eventType,
     refundId: refund.id,
     emailSent: notify.sent === true,
-    customerCc: notify.customerCc === true,
+    customerCc: notify.customerSent === true,
     customerEmailUsed: booking?.customerEmail || null,
   };
 }
@@ -301,7 +301,7 @@ async function handleInvoiceRefunded(supabase, payload, eventType) {
     eventType,
     invoiceId: invoice.id,
     emailSent: notify.sent === true,
-    customerCc: notify.customerCc === true,
+    customerCc: notify.customerSent === true,
     customerEmailUsed: booking?.customerEmail || null,
   };
 }

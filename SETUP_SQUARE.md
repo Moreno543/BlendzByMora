@@ -57,8 +57,10 @@ These are safe in `config.js` — they are public client IDs (like a Stripe publ
 | **`SQUARE_DEPOSIT_PERCENT`** | No | **No** |
 | **`SQUARE_WEBHOOK_SIGNATURE_KEY`** | For refund emails | Yes |
 | **`SQUARE_WEBHOOK_NOTIFICATION_URL`** | For refund emails | No — must match Square exactly |
+| **`GMAIL_APP_PASSWORD`** | Client refund emails (direct **To:** client) | Yes |
+| **`GMAIL_USER`** | Sender address | No — defaults to BlendzByMora@gmail.com |
 
-Also required: **`SUPABASE_URL`**, **`SUPABASE_SERVICE_ROLE_KEY`**, **`FORMSPREE_BOOKING_ID`** (same form ID as the booking form — sends confirmation email **after deposit is paid**, and **refund emails to you + client CC**)
+Also required: **`SUPABASE_URL`**, **`SUPABASE_SERVICE_ROLE_KEY`**, **`FORMSPREE_BOOKING_ID`** (owner refund notification), **`GMAIL_APP_PASSWORD`** (sends a **clean refund email directly to the client** — not CC)
 
 Run **`sql/invoices.sql`** in Supabase to store Square balance invoices and deposit payments linked to bookings.
 
@@ -134,6 +136,7 @@ What customers see on their card activity (e.g. **BlendzByMora Service**) comes 
 | Payment failed | Netlify function logs → `square-deposit-payment`; access token + location ID |
 | No balance invoice email | Square Inboxes / spam; Invoices enabled on account |
 | No refund emails | Square → Webhooks → **Logs** (403 = bad signature key or URL mismatch). Run **`sql/webhook_events.sql`**. Set **`FORMSPREE_BOOKING_ID`** on Netlify (Functions scope). |
+| Client didn’t get refund email | Set **`GMAIL_APP_PASSWORD`** on Netlify (Functions) so clients get a clean email **To:** their address — not Formspree CC. |
 | Amex still says “SERVICE TRANSACTION” | **Pending** charges use a generic label until they post (1–3 days). Set Square **Business name** to BlendzByMora; only **new** payments use the updated descriptor. |
 
 ---

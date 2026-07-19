@@ -1,6 +1,7 @@
 /**
  * Refund notification emails via Formspree (owner inbox + customer copy).
  */
+import { sendDirectEmail } from './send-email.mjs';
 
 function env(name) {
   return String(process.env[name] ?? '').trim();
@@ -129,26 +130,15 @@ export async function sendRefundNotificationEmails(details) {
 
   let customerSent = false;
   if (customerEmail) {
-    const customerParams = new URLSearchParams();
-    customerParams.append(
-      '_subject',
-      `Blendz By Mora — your refund of ${amountLabel} is complete`
-    );
-    customerParams.append('Refund notification', customerCopy);
-    customerParams.append('name', customerName);
-    customerParams.append('email', customerEmail);
-    customerParams.append('phone', String(details.customerPhone || ''));
-    customerParams.append('service', service);
-    customerParams.append('date', date);
-    customerParams.append('time', time);
-    customerParams.append('refund_amount', amountLabel);
-    customerParams.append('_cc', customerEmail);
-    if (refundId) customerParams.append('square_refund_id', refundId);
-
-    const customerResult = await postFormspree(formspreeId, customerParams);
-    customerSent = customerResult.sent === true;
-    if (!customerResult.ok) {
-      console.error('[refund-notify] customer email failed', customerEmail);
+    const customerSubject = `Blendz By Mora — your refund of ${amountLabel} is complete`;
+    const direct = await sendDirectEmail({
+      to: customerEmail,
+      subject: customerSubject,
+      text: customerCopy,
+    });
+    customerSent = direct.sent === true;
+    if (!customerSent) {
+      console.error('[refund-notify] customer direct email failed', customerEmail, direct);
     }
   }
 
@@ -156,6 +146,6 @@ export async function sendRefundNotificationEmails(details) {
     ok: true,
     sent: true,
     customerSent,
-    customerCc: customerSent,
+    customerDirect: customerSent,
   };
 }
