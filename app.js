@@ -945,19 +945,24 @@ function squareDepositCardStyle() {
   const muted = '#a0a0a0';
   const text = '#f5f5f5';
   const fieldBg = '#141414';
+  const border = '#2a2a2a';
   const red = '#ef4444';
   return {
     input: {
       color: text,
       backgroundColor: fieldBg,
       fontSize: '16px',
-      fontFamily: "'Montserrat', -apple-system, sans-serif",
+      fontFamily: 'Montserrat, sans-serif',
     },
     'input::placeholder': {
       color: muted,
     },
-    'input.is-focus::placeholder': {
-      color: muted,
+    'input.is-focus': {
+      color: text,
+      backgroundColor: fieldBg,
+    },
+    'input.is-error': {
+      color: red,
     },
     '.message-text': {
       color: red,
@@ -965,18 +970,49 @@ function squareDepositCardStyle() {
     '.message-icon': {
       color: red,
     },
+    '.message-text.is-error': {
+      color: red,
+    },
+    '.message-icon.is-error': {
+      color: red,
+    },
     '.input-container': {
-      borderColor: 'rgba(255, 255, 255, 0.12)',
+      borderColor: border,
       borderRadius: '4px',
       backgroundColor: fieldBg,
     },
     '.input-container.is-focus': {
       borderColor: gold,
     },
+    '.input-container.is-error': {
+      borderColor: red,
+    },
+  };
+}
+
+/** Minimal styles if Square rejects the full dark theme object. */
+function squareDepositCardStyleFallback() {
+  return {
+    input: {
+      color: '#1a1a1a',
+      fontSize: '16px',
+    },
+    '.input-container': {
+      borderColor: '#c9a962',
+      borderRadius: '4px',
+    },
+    '.message-text': {
+      color: '#ef4444',
+    },
+    '.message-icon': {
+      color: '#ef4444',
+    },
   };
 }
 
 async function mountSquareDepositForm(containerEl) {
+  if (!containerEl) throw new Error('Card container missing');
+  await loadSquareWebSdk();
   const payments = await getSquarePayments();
   if (bbmSquareCard) {
     try {
@@ -986,8 +1022,20 @@ async function mountSquareDepositForm(containerEl) {
     }
     bbmSquareCard = null;
   }
-  bbmSquareCard = await payments.card({ style: squareDepositCardStyle() });
-  await bbmSquareCard.attach(containerEl);
+
+  const styleAttempts = [squareDepositCardStyle(), squareDepositCardStyleFallback(), undefined];
+  let lastError = null;
+  for (const style of styleAttempts) {
+    try {
+      bbmSquareCard = style ? await payments.card({ style }) : await payments.card();
+      await bbmSquareCard.attach(containerEl);
+      return;
+    } catch (err) {
+      lastError = err;
+      bbmSquareCard = null;
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error('Square card form failed to load');
 }
 
 function bookingDepositConfigured() {
@@ -1111,13 +1159,37 @@ async function showBookingDepositPayment({
     }
   }
 
+  let cardMountFailed = false;
+
+  async function ensureCardFormReady() {
+    if (bbmSquareCard) return true;
+    payErr.hidden = true;
+    const wasHidden = cardWrap.hidden;
+    if (wasHidden) cardWrap.hidden = false;
+    try {
+      await mountSquareDepositForm(cardWrap);
+      cardMountFailed = false;
+      return true;
+    } catch (err) {
+      cardMountFailed = true;
+      payErr.hidden = false;
+      payErr.textContent =
+        'Card payment could not load. Try again, use bank transfer, or email BlendzByMora@gmail.com.';
+      console.warn('[Blendz] Square card mount failed', err);
+      return false;
+    } finally {
+      if (wasHidden && paymentMethod !== 'card') cardWrap.hidden = true;
+    }
+  }
+
   updateDepositSummary();
 
-  cardTab.addEventListener('click', () => {
+  cardTab.addEventListener('click', async () => {
     if (paymentMethod === 'card') return;
     paymentMethod = 'card';
     payErr.hidden = true;
     updateDepositSummary();
+    await ensureCardFormReady();
   });
 
   achTab.addEventListener('click', () => {
@@ -1127,16 +1199,12 @@ async function showBookingDepositPayment({
     updateDepositSummary();
   });
 
-  try {
-    await mountSquareDepositForm(cardWrap);
-  } catch (err) {
-    payErr.hidden = false;
-    payErr.textContent =
-      'Card payment is unavailable right now. Try bank transfer or we will contact you with payment instructions.';
-    cardTab.disabled = true;
-    paymentMethod = 'ach';
-    updateDepositSummary();
-    console.warn('[Blendz] Square card mount failed', err);
+  if (paymentMethod === 'card') {
+    await ensureCardFormReady();
+    if (cardMountFailed) {
+      paymentMethod = 'ach';
+      updateDepositSummary();
+    }
   }
 
   payBtn.addEventListener('click', async () => {
@@ -1167,6 +1235,10 @@ async function showBookingDepositPayment({
           amountCents: depositBaseCents,
         });
       } else {
+        const cardReady = await ensureCardFormReady();
+        if (!cardReady || !bbmSquareCard) {
+          throw new Error('Card payment is unavailable right now. Try bank transfer or contact us.');
+        }
         const tokenResult = await bbmSquareCard.tokenize();
         if (tokenResult.status !== 'OK') {
           const detail =

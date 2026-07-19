@@ -877,6 +877,7 @@ section h2 {
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 8px;
   --sq-placeholder-color: var(--color-text-muted);
+  color-scheme: auto;
 }
 
 .booking-deposit-pay-btn {
