@@ -1,5 +1,5 @@
 /**
- * Scheduled: send Twilio SMS ~24h before each appointment (Las Vegas slot times).
+ * Scheduled: send Twilio SMS ~72h before each appointment (Las Vegas slot times).
  * Requires: reminder_sent_at on bookings (see TWILIO_SETUP.md).
  * Schedule: netlify.toml [functions.booking-reminders]
  */
@@ -11,9 +11,9 @@ import {
 } from './lib/booking-time.mjs';
 import { hasOutboundSender, twilioMessageParams } from './lib/twilio-send.mjs';
 
-/** Send when appointment is between 23h and 25h from now (hourly cron tolerance). */
-const WINDOW_MIN_MS = 23 * 60 * 60 * 1000;
-const WINDOW_MAX_MS = 25 * 60 * 60 * 1000;
+/** Send when appointment is between 71h and 73h from now (hourly cron tolerance). */
+const WINDOW_MIN_MS = 71 * 60 * 60 * 1000;
+const WINDOW_MAX_MS = 73 * 60 * 60 * 1000;
 
 function toE164(phone) {
   const digits = String(phone || '').replace(/\D/g, '');
@@ -28,9 +28,9 @@ function buildReminderBody(row) {
   const service = String(row.service || 'your appointment').slice(0, 60);
   const date = String(row.date || '');
   const time = String(row.time || '');
-  let text = `Blendz By Mora: Hello ${first}. Reminder: your ${service} is on ${date} at ${time} (~24h). Reply YES to confirm. Msg & data rates may apply. Reply HELP for help, STOP to opt out.`;
+  let text = `Blendz By Mora: Hello ${first}. Reminder: your ${service} is on ${date} at ${time} (~72h). Reply YES to confirm. Msg & data rates may apply. Reply HELP for help, STOP to opt out.`;
   if (text.length > 320) {
-    text = `Blendz By Mora: Hello ${first}. Reminder: ${service} on ${date} at ${time} (~24h). Reply YES to confirm. Reply HELP for help, STOP to opt out.`;
+    text = `Blendz By Mora: Hello ${first}. Reminder: ${service} on ${date} at ${time} (~72h). Reply YES to confirm. Reply HELP for help, STOP to opt out.`;
   }
   if (text.length > 320) {
     text = text.slice(0, 317) + '...';

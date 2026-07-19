@@ -1,9 +1,9 @@
-# Twilio SMS — full setup (confirmations, 24h reminders, YES replies)
+# Twilio SMS — full setup (confirmations, 72h reminders, YES replies)
 
 This site can:
 
 1. **After booking** — Text the customer a short confirmation (Netlify **`booking-sms`**).
-2. **~24 hours before** the appointment — One reminder text per booking (Netlify **`booking-reminders`**, runs **every hour** UTC).
+2. **~72 hours before** the appointment — One reminder text per booking (Netlify **`booking-reminders`**, runs **every hour** UTC).
 3. **Inbound** — Customer texts **YES** → **`bookings.sms_confirmed_at`** is set (filter **SMS confirmed** on **`admin.html`**); optional SMS to your phone (**`twilio-inbound-sms`**).
 
 You need **US A2P 10DLC** (brand + campaign + number on a Messaging Service) for reliable US SMS. See [Twilio A2P 10DLC](https://www.twilio.com/docs/messaging/compliance/a2p-10dlc).
@@ -16,7 +16,7 @@ You need **US A2P 10DLC** (brand + campaign + number on a Messaging Service) for
 2. Paste **everything** below → **Run** once.
 
 ```sql
--- ── A) Required for 24h reminders (safe to run again) ─────────────────────
+-- ── A) Required for 72h reminders (safe to run again) ─────────────────────
 ALTER TABLE bookings ADD COLUMN IF NOT EXISTS reminder_sent_at TIMESTAMPTZ;
 
 -- ── B) SMS “Reply YES” → timestamp on the booking (safe to run again) ─────
@@ -106,7 +106,7 @@ After vetting: confirm your **sending number** is still in the **Messaging Servi
 
 1. Push the repo; confirm **Netlify** shows **Functions** including `lookup-phone`, `booking-sms`, `booking-reminders`, `twilio-inbound-sms`, `admin-bookings`.  
 2. **Booking SMS:** Submit a real booking on the **live** site → check **Twilio → Monitor → Logs → Messaging**.  
-3. **Reminder:** After deploy, the scheduler runs **hourly**; a booking **~24h** ahead (Las Vegas slot time) with `reminder_sent_at` null should get **one** reminder.  
+3. **Reminder:** After deploy, the scheduler runs **hourly**; a booking **~72h** ahead (Las Vegas slot time) with `reminder_sent_at` null should get **one** reminder.  
 4. **YES:** From the phone on the booking, text **YES** to your Twilio number → **`bookings.sms_confirmed_at`** updates in Supabase; see **`admin.html`** (filter **SMS confirmed**); optional **SMS** to **`TWILIO_OWNER_NOTIFY_PHONE`** and **email** via **`FORMSPREE_BOOKING_ID`**.
 
 **Trial accounts:** Until upgraded, you can only SMS **verified** numbers in Twilio.
@@ -118,16 +118,16 @@ After vetting: confirm your **sending number** is still in the **Messaging Servi
 ## Edit message text
 
 - Immediate confirmation: `netlify/functions/booking-sms.mjs` → `buildBody`  
-- ~24h reminder: `netlify/functions/booking-reminders.mjs` → `buildReminderBody`  
+- ~72h reminder: `netlify/functions/booking-reminders.mjs` → `buildReminderBody`  
 - Inbound auto-replies: `netlify/functions/twilio-inbound-sms.mjs`
 
 Messages include **HELP** / **STOP** language for carrier / A2P sample requirements. When you **resubmit your 10DLC campaign** in Twilio, use samples consistent with production, for example:
 
 - **Transactional / confirmation (sample):**  
-  `Blendz By Mora: Hi [Name]! We received your request — [Service] on [Date] at [Time]. We'll confirm by email or phone. Reminder ~24h before appt. Msg & data rates may apply. Reply HELP for help, STOP to opt out.`
+  `Blendz By Mora: Hi [Name]! We received your request — [Service] on [Date] at [Time]. We'll confirm by email or phone. Reminder ~72h before appt. Msg & data rates may apply. Reply HELP for help, STOP to opt out.`
 
 - **Reminder (sample):**  
-  `Blendz By Mora: Hello [Name]. Reminder: your [Service] is on [Date] at [Time] (~24h). Reply YES to confirm. Msg & data rates may apply. Reply HELP for help, STOP to opt out.`
+  `Blendz By Mora: Hello [Name]. Reminder: your [Service] is on [Date] at [Time] (~72h). Reply YES to confirm. Msg & data rates may apply. Reply HELP for help, STOP to opt out.`
 
 Opt-in on the live site: **`book.html`** optional checkbox (not pre-checked, not required) + links to **Privacy** and **Terms**.
 

@@ -24,7 +24,6 @@ export default async function handler(request) {
       hasSupabase: Boolean(env('SUPABASE_URL') && env('SUPABASE_SERVICE_ROLE_KEY')),
       hasFormspree: Boolean(env('FORMSPREE_BOOKING_ID')),
       hasSquareApi: Boolean(env('SQUARE_ACCESS_TOKEN')),
-      hasGmailSend: Boolean(env('GMAIL_APP_PASSWORD')),
     }),
     { status: 200, headers: { 'Content-Type': 'application/json' } }
   );

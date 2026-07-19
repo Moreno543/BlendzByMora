@@ -21,8 +21,8 @@ export function buildBookingSmsBody(row, { depositPaid = false } = {}) {
   const date = String(row.date || '');
   const time = String(row.time || '');
   let text = depositPaid
-    ? `Blendz By Mora: Hi ${first}! Deposit received — ${service} on ${date} at ${time} is secured. Reminder ~24h before appt. Msg & data rates may apply. Reply HELP for help, STOP to opt out.`
-    : `Blendz By Mora: Hi ${first}! We received your request — ${service} on ${date} at ${time}. We'll confirm by email or phone. Reminder ~24h before appt. Msg & data rates may apply. Reply HELP for help, STOP to opt out.`;
+    ? `Blendz By Mora: Hi ${first}! Deposit received — ${service} on ${date} at ${time} is secured. Reminder ~72h before appt. Msg & data rates may apply. Reply HELP for help, STOP to opt out.`
+    : `Blendz By Mora: Hi ${first}! We received your request — ${service} on ${date} at ${time}. We'll confirm by email or phone. Reminder ~72h before appt. Msg & data rates may apply. Reply HELP for help, STOP to opt out.`;
   if (text.length > 320) {
     text = depositPaid
       ? `Blendz By Mora: Hi ${first}! Deposit received for ${date} at ${time}. See you soon! Msg & data rates may apply. Reply HELP for help, STOP to opt out.`
