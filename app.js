@@ -784,6 +784,36 @@ function loadSquareWebSdk() {
 
 let bbmSquareCard = null;
 
+/** Match “Deposit due now” green on Square card placeholders and hints. */
+function squareDepositCardStyle() {
+  const green = '#4ade80';
+  return {
+    input: {
+      color: '#1a1a1a',
+      fontSize: '16px',
+    },
+    'input::placeholder': {
+      color: green,
+    },
+    'input.is-focus::placeholder': {
+      color: green,
+    },
+    '.message-text': {
+      color: green,
+    },
+    '.message-icon': {
+      color: green,
+    },
+    '.input-container': {
+      borderColor: 'rgba(74, 222, 128, 0.4)',
+      borderRadius: '6px',
+    },
+    '.input-container.is-focus': {
+      borderColor: green,
+    },
+  };
+}
+
 async function mountSquareDepositForm(containerEl) {
   await loadSquareWebSdk();
   const appId = String(CONFIG.SQUARE_APPLICATION_ID || '').trim();
@@ -798,7 +828,7 @@ async function mountSquareDepositForm(containerEl) {
     bbmSquareCard = null;
   }
   const payments = window.Square.payments(appId, locationId);
-  bbmSquareCard = await payments.card();
+  bbmSquareCard = await payments.card({ style: squareDepositCardStyle() });
   await bbmSquareCard.attach(containerEl);
 }
 

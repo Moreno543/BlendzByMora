@@ -7,6 +7,7 @@
   --color-text-muted: #a0a0a0;
   --color-accent: #c9a962;
   --color-accent-hover: #d4b872;
+  --color-deposit: #4ade80;
   --font-display: 'Cormorant Garamond', Georgia, serif;
   --font-body: 'Montserrat', -apple-system, sans-serif;
 }
@@ -700,7 +701,7 @@ section h2 {
 
 .booking-status.success {
   display: block;
-  color: #4ade80;
+  color: var(--color-deposit);
 }
 
 .booking-status.error {
@@ -732,11 +733,13 @@ section h2 {
 
 .booking-deposit-amount {
   margin: 0 0 1rem;
+  color: var(--color-deposit);
 }
 
 .square-card-container {
   min-height: 56px;
   margin-bottom: 1rem;
+  --sq-placeholder-color: var(--color-deposit);
 }
 
 .booking-deposit-pay-btn {
