@@ -44,6 +44,18 @@ export async function squareFetch({ path, method = 'GET', body, accessToken, env
   return json;
 }
 
+/** Fetch payment details (buyer email, receipt, note) for refund notifications. */
+export async function getSquarePayment({ paymentId, accessToken, environment, squareVersion }) {
+  if (!paymentId) return null;
+  const json = await squareFetch({
+    path: `/v2/payments/${encodeURIComponent(paymentId)}`,
+    accessToken,
+    environment,
+    squareVersion,
+  });
+  return json?.payment || null;
+}
+
 function splitName(fullName) {
   const parts = String(fullName || '').trim().split(/\s+/).filter(Boolean);
   if (!parts.length) return { given_name: 'Client', family_name: undefined };

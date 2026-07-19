@@ -51,7 +51,9 @@ export async function sendRefundNotificationEmails(details) {
     (reason ? `Reason: ${reason}\n` : '') +
     (refundId ? `Square refund ID: ${refundId}\n` : '') +
     (paymentId ? `Square payment ID: ${paymentId}\n` : '') +
-    '\nThe client was CC’d on this notification.';
+    (customerEmail
+      ? '\nThe client was CC’d on this notification.'
+      : '\nNo client email was on file — only this owner copy was sent.');
 
   const params = new URLSearchParams();
   params.append('_subject', `Blendz By Mora — refund issued (${amountLabel}) — ${customerName}`);

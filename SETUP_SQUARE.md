@@ -133,7 +133,8 @@ What customers see on their card activity (e.g. **BlendzByMora Service**) comes 
 | “Card payment unavailable” | Application ID matches Production/Sandbox with `SQUARE_ENVIRONMENT` |
 | Payment failed | Netlify function logs → `square-deposit-payment`; access token + location ID |
 | No balance invoice email | Square Inboxes / spam; Invoices enabled on account |
-| **`Exposed secrets detected`** | Uncheck secret on `SQUARE_ACCESS_TOKEN`, `SQUARE_ENVIRONMENT`, `SQUARE_DEPOSIT_PERCENT` |
+| No refund emails | Square → Webhooks → **Logs** (403 = bad signature key or URL mismatch). Run **`sql/webhook_events.sql`**. Set **`FORMSPREE_BOOKING_ID`** on Netlify (Functions scope). |
+| Amex still says “SERVICE TRANSACTION” | **Pending** charges use a generic label until they post (1–3 days). Set Square **Business name** to BlendzByMora; only **new** payments use the updated descriptor. |
 
 ---
 
