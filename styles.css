@@ -731,6 +731,53 @@ section h2 {
   text-align: left;
 }
 
+.booking-pay-method-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.booking-pay-method-tab {
+  flex: 1 1 9rem;
+  padding: 0.65rem 0.85rem;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.booking-pay-method-tab:hover:not(:disabled) {
+  border-color: rgba(74, 222, 128, 0.45);
+}
+
+.booking-pay-method-tab.is-active {
+  border-color: var(--color-deposit);
+  background: rgba(74, 222, 128, 0.08);
+  color: var(--color-deposit);
+}
+
+.booking-pay-method-tab:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.booking-deposit-ach-info {
+  margin: 0 0 1rem;
+  color: var(--color-text-muted);
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+.booking-deposit-resume-note {
+  margin: 0 0 0.75rem;
+  color: var(--color-deposit);
+  font-size: 0.95rem;
+}
+
 .booking-deposit-amount {
   margin: 0 0 1rem;
   color: var(--color-deposit);

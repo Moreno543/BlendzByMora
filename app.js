@@ -37,6 +37,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initNavScroll();
   initDatePicker();
   initBookingForm();
+  maybeResumeAchDepositPayment();
   initTravelNotes();
   initReviewForm();
   loadReviews();
@@ -807,6 +808,136 @@ function loadSquareWebSdk() {
 }
 
 let bbmSquareCard = null;
+let bbmSquarePayments = null;
+let bbmSquareAch = null;
+let bbmAchTransactionId = null;
+
+const BBM_PENDING_DEPOSIT_KEY = 'bbm_pending_deposit';
+
+async function getSquarePayments() {
+  await loadSquareWebSdk();
+  const appId = String(CONFIG.SQUARE_APPLICATION_ID || '').trim();
+  const locationId = String(CONFIG.SQUARE_LOCATION_ID || '').trim();
+  if (!appId || !locationId) throw new Error('Square payments not configured');
+  if (!bbmSquarePayments) {
+    bbmSquarePayments = window.Square.payments(appId, locationId);
+  }
+  return bbmSquarePayments;
+}
+
+async function ensureSquareAch(transactionId) {
+  const payments = await getSquarePayments();
+  if (bbmSquareAch && bbmAchTransactionId === transactionId) return bbmSquareAch;
+  if (bbmSquareAch) {
+    try {
+      await bbmSquareAch.destroy();
+    } catch (_) {
+      /* ignore */
+    }
+    bbmSquareAch = null;
+    bbmAchTransactionId = null;
+  }
+  const redirectURI = `${window.location.origin}${window.location.pathname}`;
+  bbmSquareAch = await payments.ach({ redirectURI, transactionId });
+  bbmAchTransactionId = transactionId;
+  return bbmSquareAch;
+}
+
+function tokenizeAchPayment(ach, { accountHolderName, amountCents }) {
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const finish = (fn, val) => {
+      if (settled) return;
+      settled = true;
+      ach.removeEventListener('ontokenization', onToken);
+      fn(val);
+    };
+    const onToken = (event) => {
+      const { tokenResult, error } = event.detail || {};
+      if (error) {
+        return finish(reject, new Error(String(error)));
+      }
+      if (tokenResult?.status === 'OK' && tokenResult.token) {
+        return finish(resolve, tokenResult.token);
+      }
+      finish(reject, new Error('Bank authorization was not completed.'));
+    };
+    ach.addEventListener('ontokenization', onToken);
+    ach
+      .tokenize({
+        intent: 'CHARGE',
+        accountHolderName,
+        amount: (amountCents / 100).toFixed(2),
+        currency: 'USD',
+      })
+      .catch((err) => finish(reject, err instanceof Error ? err : new Error('Bank payment failed')));
+  });
+}
+
+function savePendingAchDeposit(data) {
+  try {
+    sessionStorage.setItem(BBM_PENDING_DEPOSIT_KEY, JSON.stringify(data));
+  } catch (_) {
+    /* ignore */
+  }
+}
+
+function clearPendingAchDeposit() {
+  try {
+    sessionStorage.removeItem(BBM_PENDING_DEPOSIT_KEY);
+  } catch (_) {
+    /* ignore */
+  }
+}
+
+function readPendingAchDeposit() {
+  try {
+    const raw = sessionStorage.getItem(BBM_PENDING_DEPOSIT_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+function stripAchRedirectQuery() {
+  const params = new URLSearchParams(window.location.search);
+  if (!params.has('transactionId')) return;
+  params.delete('transactionId');
+  const qs = params.toString();
+  window.history.replaceState({}, '', window.location.pathname + (qs ? `?${qs}` : '') + window.location.hash);
+}
+
+async function submitDepositPayment({ bookingId, sourceId, attemptId, paymentMethod }) {
+  const res = await fetch('/.netlify/functions/square-deposit-payment', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify({ bookingId, sourceId, attemptId, paymentMethod }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data.ok) {
+    throw new Error(data.error || 'Payment failed. Please try again.');
+  }
+  return data;
+}
+
+function renderDepositSuccessMessage(data) {
+  const achPending = data.achPending === true;
+  const paidByAch = data.paymentMethod === 'ach';
+  if (achPending) {
+    return (
+      'Bank transfer submitted — thank you! Your appointment is secured while the transfer completes (typically 2–3 business days). ' +
+      'Square will email you an invoice for the remaining balance due on your service date. You can pay that invoice by bank transfer (no card fee) or by card.'
+    );
+  }
+  if (paidByAch) {
+    return (
+      'Deposit paid by bank transfer — thank you! Your appointment is secured. Square will email you an invoice for the remaining balance due on your service date. Bank transfer (ACH) has no card processing fee; card payments include a 3.3% + $0.30 fee per transaction.'
+    );
+  }
+  return (
+    'Deposit paid — thank you! Your appointment is secured. Square will email you an invoice for the remaining balance due on your service date (card payments include a 3.3% + $0.30 processing fee on each transaction).'
+  );
+}
 
 /** Match “Deposit due now” green on Square card placeholders and hints. */
 function squareDepositCardStyle() {
@@ -839,10 +970,7 @@ function squareDepositCardStyle() {
 }
 
 async function mountSquareDepositForm(containerEl) {
-  await loadSquareWebSdk();
-  const appId = String(CONFIG.SQUARE_APPLICATION_ID || '').trim();
-  const locationId = String(CONFIG.SQUARE_LOCATION_ID || '').trim();
-  if (!appId || !locationId) throw new Error('Square payments not configured');
+  const payments = await getSquarePayments();
   if (bbmSquareCard) {
     try {
       await bbmSquareCard.destroy();
@@ -851,7 +979,6 @@ async function mountSquareDepositForm(containerEl) {
     }
     bbmSquareCard = null;
   }
-  const payments = window.Square.payments(appId, locationId);
   bbmSquareCard = await payments.card({ style: squareDepositCardStyle() });
   await bbmSquareCard.attach(containerEl);
 }
@@ -862,43 +989,74 @@ function bookingDepositConfigured() {
   );
 }
 
-/** After booking saves, show Square’s secure card form for the 50% deposit. */
-async function showBookingDepositPayment({ status, bookingId, serviceLabel }) {
+/** After booking saves, show Square card or ACH bank transfer for the 50% deposit. */
+async function showBookingDepositPayment({
+  status,
+  bookingId,
+  serviceLabel,
+  customerName,
+  initialPaymentMethod = 'card',
+}) {
   const totalCents = parseBookingServicePriceCents(serviceLabel);
   const pct = Number(CONFIG.SQUARE_DEPOSIT_PERCENT || 50);
   if (!totalCents || !bookingId || !bookingDepositConfigured()) return false;
 
   const depositBaseCents = Math.round((totalCents * pct) / 100);
   const depositFeeCents = cardProcessingFeeCents(depositBaseCents);
-  const depositChargeCents = cardChargeTotalCents(depositBaseCents);
+  const depositCardChargeCents = cardChargeTotalCents(depositBaseCents);
   const feeLabel = cardProcessingFeeLabel();
+  let paymentMethod = initialPaymentMethod === 'ach' ? 'ach' : 'card';
+
   status.className = 'booking-status success';
   status.textContent = '';
   status.style.display = 'block';
 
   const msg = document.createElement('p');
   msg.textContent =
-    'Your appointment details are saved. Pay your deposit below to secure your date. Card payments include a processing fee (' +
-    feeLabel +
-    ' per transaction). Your confirmation email and text (if you opted in) will be sent after payment.';
+    'Your appointment details are saved. Pay your deposit below to secure your date. Choose card (includes a processing fee) or bank transfer (ACH, no card fee). Your confirmation email and text (if you opted in) will be sent after payment.';
   status.appendChild(msg);
 
   const payBox = document.createElement('div');
   payBox.className = 'booking-deposit-pay';
 
+  const methodTabs = document.createElement('div');
+  methodTabs.className = 'booking-pay-method-tabs';
+  methodTabs.setAttribute('role', 'tablist');
+  methodTabs.setAttribute('aria-label', 'Deposit payment method');
+
+  const cardTab = document.createElement('button');
+  cardTab.type = 'button';
+  cardTab.className = 'booking-pay-method-tab is-active';
+  cardTab.setAttribute('role', 'tab');
+  cardTab.setAttribute('aria-selected', 'true');
+  cardTab.textContent = 'Card';
+
+  const achTab = document.createElement('button');
+  achTab.type = 'button';
+  achTab.className = 'booking-pay-method-tab';
+  achTab.setAttribute('role', 'tab');
+  achTab.setAttribute('aria-selected', 'false');
+  achTab.textContent = 'Bank transfer (no fee)';
+
+  methodTabs.appendChild(cardTab);
+  methodTabs.appendChild(achTab);
+  payBox.appendChild(methodTabs);
+
   const amountLine = document.createElement('p');
   amountLine.className = 'booking-deposit-amount';
-  amountLine.innerHTML =
-    `<span class="booking-deposit-line"><strong>Deposit (50%):</strong> ${formatUsd(depositBaseCents)}</span>` +
-    `<span class="booking-deposit-line booking-deposit-fee">Card processing fee (${feeLabel}): ${formatUsd(depositFeeCents)}</span>` +
-    `<span class="booking-deposit-line"><strong>Total due now:</strong> ${formatUsd(depositChargeCents)}</span>` +
-    `<span class="booking-deposit-note">If you also pay your balance invoice by card, the same processing fee applies to that payment separately.</span>`;
   payBox.appendChild(amountLine);
 
   const cardWrap = document.createElement('div');
   cardWrap.id = 'square-card-container';
   cardWrap.className = 'square-card-container';
   payBox.appendChild(cardWrap);
+
+  const achInfo = document.createElement('p');
+  achInfo.className = 'booking-deposit-ach-info';
+  achInfo.hidden = true;
+  achInfo.textContent =
+    'You will connect your bank securely through Square. Bank transfers typically take 2–3 business days to complete. No card processing fee applies.';
+  payBox.appendChild(achInfo);
 
   const payErr = document.createElement('p');
   payErr.className = 'booking-deposit-error';
@@ -908,50 +1066,110 @@ async function showBookingDepositPayment({ status, bookingId, serviceLabel }) {
   const payBtn = document.createElement('button');
   payBtn.type = 'button';
   payBtn.className = 'btn btn-primary booking-deposit-pay-btn';
-  payBtn.textContent = `Pay ${formatUsd(depositChargeCents)} deposit`;
   payBox.appendChild(payBtn);
 
   status.appendChild(payBox);
+
+  function updateDepositSummary() {
+    const isCard = paymentMethod === 'card';
+    cardTab.classList.toggle('is-active', isCard);
+    cardTab.setAttribute('aria-selected', isCard ? 'true' : 'false');
+    achTab.classList.toggle('is-active', !isCard);
+    achTab.setAttribute('aria-selected', !isCard ? 'true' : 'false');
+    cardWrap.hidden = !isCard;
+    achInfo.hidden = isCard;
+    if (isCard) {
+      amountLine.innerHTML =
+        `<span class="booking-deposit-line"><strong>Deposit (${pct}%):</strong> ${formatUsd(depositBaseCents)}</span>` +
+        `<span class="booking-deposit-line booking-deposit-fee">Card processing fee (${feeLabel}): ${formatUsd(depositFeeCents)}</span>` +
+        `<span class="booking-deposit-line"><strong>Total due now:</strong> ${formatUsd(depositCardChargeCents)}</span>` +
+        `<span class="booking-deposit-note">If you also pay your balance invoice by card, the same processing fee applies to that payment separately.</span>`;
+      payBtn.textContent = `Pay ${formatUsd(depositCardChargeCents)} deposit by card`;
+    } else {
+      amountLine.innerHTML =
+        `<span class="booking-deposit-line"><strong>Deposit (${pct}%):</strong> ${formatUsd(depositBaseCents)}</span>` +
+        `<span class="booking-deposit-line"><strong>Total due now:</strong> ${formatUsd(depositBaseCents)}</span>` +
+        `<span class="booking-deposit-note">Bank transfer (ACH) has no card processing fee. Your balance invoice can also be paid by bank transfer or card.</span>`;
+      payBtn.textContent = `Pay ${formatUsd(depositBaseCents)} deposit by bank transfer`;
+    }
+  }
+
+  updateDepositSummary();
+
+  cardTab.addEventListener('click', () => {
+    if (paymentMethod === 'card') return;
+    paymentMethod = 'card';
+    payErr.hidden = true;
+    updateDepositSummary();
+  });
+
+  achTab.addEventListener('click', () => {
+    if (paymentMethod === 'ach') return;
+    paymentMethod = 'ach';
+    payErr.hidden = true;
+    updateDepositSummary();
+  });
 
   try {
     await mountSquareDepositForm(cardWrap);
   } catch (err) {
     payErr.hidden = false;
     payErr.textContent =
-      'Card payment is unavailable right now. We will contact you with payment instructions.';
-    payBtn.disabled = true;
+      'Card payment is unavailable right now. Try bank transfer or we will contact you with payment instructions.';
+    cardTab.disabled = true;
+    paymentMethod = 'ach';
+    updateDepositSummary();
     console.warn('[Blendz] Square card mount failed', err);
-    return true;
   }
 
   payBtn.addEventListener('click', async () => {
     payErr.hidden = true;
     payBtn.disabled = true;
     payBtn.textContent = 'Processing…';
+    const attemptId =
+      typeof crypto !== 'undefined' && crypto.randomUUID
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
     try {
-      const attemptId =
-        typeof crypto !== 'undefined' && crypto.randomUUID
-          ? crypto.randomUUID()
-          : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-      const tokenResult = await bbmSquareCard.tokenize();
-      if (tokenResult.status !== 'OK') {
-        const detail =
-          tokenResult.errors?.[0]?.message || 'Could not read card. Check the details and try again.';
-        throw new Error(detail);
+      let sourceId;
+      if (paymentMethod === 'ach') {
+        const accountHolderName = String(customerName || '').trim();
+        if (!accountHolderName) {
+          throw new Error('Enter your name on the booking form before paying by bank transfer.');
+        }
+        savePendingAchDeposit({
+          bookingId,
+          serviceLabel,
+          customerName: accountHolderName,
+          paymentMethod: 'ach',
+          transactionId: attemptId,
+        });
+        const ach = await ensureSquareAch(attemptId);
+        sourceId = await tokenizeAchPayment(ach, {
+          accountHolderName,
+          amountCents: depositBaseCents,
+        });
+      } else {
+        const tokenResult = await bbmSquareCard.tokenize();
+        if (tokenResult.status !== 'OK') {
+          const detail =
+            tokenResult.errors?.[0]?.message || 'Could not read card. Check the details and try again.';
+          throw new Error(detail);
+        }
+        sourceId = tokenResult.token;
       }
-      const res = await fetch('/.netlify/functions/square-deposit-payment', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify({ bookingId, sourceId: tokenResult.token, attemptId }),
+
+      const data = await submitDepositPayment({
+        bookingId,
+        sourceId,
+        attemptId,
+        paymentMethod,
       });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data.ok) {
-        throw new Error(data.error || 'Payment failed. Please try again.');
-      }
+      clearPendingAchDeposit();
+      stripAchRedirectQuery();
       status.textContent = '';
       const done = document.createElement('p');
-      let doneText =
-        'Deposit paid — thank you! Your appointment is secured. Square will email you an invoice for the remaining balance due on your service date (card payments include a 3.3% + $0.30 processing fee on each transaction).';
+      let doneText = renderDepositSuccessMessage(data);
       if (data.emailSent) {
         doneText += ' A confirmation has been sent to your email.';
       }
@@ -965,11 +1183,38 @@ async function showBookingDepositPayment({ status, bookingId, serviceLabel }) {
       payErr.hidden = false;
       payErr.textContent = err instanceof Error ? err.message : 'Payment failed.';
       payBtn.disabled = false;
-      payBtn.textContent = `Pay ${formatUsd(depositChargeCents)} deposit`;
+      updateDepositSummary();
     }
   });
 
   return true;
+}
+
+/** If Square redirected back after Plaid bank login, restore the deposit step. */
+async function maybeResumeAchDepositPayment() {
+  const params = new URLSearchParams(window.location.search);
+  const transactionId = params.get('transactionId');
+  const pending = readPendingAchDeposit();
+  if (!transactionId || !pending?.bookingId) return;
+  if (pending.transactionId && pending.transactionId !== transactionId) return;
+
+  const status = document.getElementById('booking-status');
+  if (!status || !bookingDepositConfigured()) return;
+
+  stripAchRedirectQuery();
+  await showBookingDepositPayment({
+    status,
+    bookingId: pending.bookingId,
+    serviceLabel: pending.serviceLabel || '',
+    customerName: pending.customerName || '',
+    initialPaymentMethod: 'ach',
+  });
+
+  const resumeMsg = document.createElement('p');
+  resumeMsg.className = 'booking-deposit-resume-note';
+  resumeMsg.textContent =
+    'Welcome back — finish your bank transfer by clicking the pay button below.';
+  status.insertBefore(resumeMsg, status.querySelector('.booking-deposit-pay'));
 }
 
 /** Reoon email verification via Netlify (optional); skipped if REOON_API_KEY unset. */
@@ -1291,7 +1536,7 @@ function initBookingForm() {
           `Hello ${firstName},\n\n` +
           'Thank you for submitting an appointment request with Blendz By Mora. Below is a copy of the services you requested for your records.\n\n' +
           `You agreed to our Service Agreement (version ${agreementVersion}). Keep this link for your records:\n${agreementUrl}\n\n` +
-          'To secure your appointment, a 50% deposit is due upon booking. After you submit, you can pay by card on the booking page; the remaining balance will be invoiced for your service date.\n\n' +
+          'To secure your appointment, a 50% deposit is due upon booking. After you submit, you can pay by card or bank transfer (ACH) on the booking page; bank transfer has no card processing fee. The remaining balance will be invoiced for your service date.\n\n' +
           'Our team will review your request and follow up shortly to confirm your appointment by email or phone.\n\n' +
           'Kind regards,\nBlendz By Mora';
         // Shown first in Formspree emails (you + customer CC) — reads as a professional cover note above the fields
@@ -1323,6 +1568,7 @@ function initBookingForm() {
           status,
           bookingId,
           serviceLabel: bookingPayload.service,
+          customerName: bookingPayload.name,
         });
       }
 

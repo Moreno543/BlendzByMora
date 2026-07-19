@@ -3,10 +3,10 @@
 When a client books on **blendzbymora.com**:
 
 1. They submit the booking form
-2. A **secure Square card form** appears on the page for the **50% deposit**
-3. After the deposit is paid, Square emails an **invoice for the remaining balance** due on the **appointment date**
+2. A **secure Square payment step** appears on the page for the **50% deposit** — **card** (includes processing fee) or **bank transfer (ACH, no card fee)**
+3. After the deposit is paid, Square emails an **invoice for the remaining balance** due on the **appointment date** (card or bank transfer accepted on the invoice)
 
-Card details are handled by Square (not stored on your site). You never touch raw card numbers.
+Card and bank details are handled by Square (not stored on your site). You never touch raw card or bank account numbers.
 
 ---
 
@@ -114,7 +114,9 @@ Square also sends its own refund receipt to the customer; Formspree adds your br
 
 Service price is parsed from the dropdown (e.g. `Soft Glam - $100` → **$50** deposit + **$50** balance).
 
-**Card processing fee:** Each Square card payment (deposit and balance invoice) adds **3.3% + $0.30** to the amount charged so processing costs are covered. If the client pays both by card, the fee applies **twice**. Cash and Zelle are not subject to this fee.
+**Card processing fee:** Each Square **card** payment (deposit and balance invoice) adds **3.3% + $0.30** to the amount charged so processing costs are covered. If the client pays both by card, the fee applies **twice**. **Bank transfer (ACH)**, cash, and Zelle are not subject to this fee. ACH deposits may show as **PENDING** for 2–3 business days before they complete.
+
+**ACH (bank transfer):** Enable ACH in your Square account if the bank transfer tab does not appear. The booking page uses Square’s Web Payments SDK ACH flow (Plaid). Balance invoices accept **bank_account** payments as well as card.
 
 ---
 
@@ -140,6 +142,7 @@ What customers see on their card activity (e.g. **BlendzByMora Service**) comes 
 | Issue | Check |
 |-------|--------|
 | No card form after booking | `SQUARE_APPLICATION_ID` and `SQUARE_LOCATION_ID` set in `config.js`? Redeploy |
+| Bank transfer unavailable | ACH enabled on your Square account? Try Production (not all sandbox sellers have ACH) |
 | “Card payment unavailable” | Application ID matches Production/Sandbox with `SQUARE_ENVIRONMENT` |
 | Payment failed | Netlify function logs → `square-deposit-payment`; access token + location ID |
 | No balance invoice email | Square Inboxes / spam; Invoices enabled on account |

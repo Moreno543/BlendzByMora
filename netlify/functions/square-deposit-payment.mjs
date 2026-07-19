@@ -66,6 +66,8 @@ export default async function handler(request) {
   const bookingId = typeof body?.bookingId === 'string' ? body.bookingId.trim() : '';
   const sourceId = typeof body?.sourceId === 'string' ? body.sourceId.trim() : '';
   const attemptId = typeof body?.attemptId === 'string' ? body.attemptId.trim() : '';
+  const paymentMethod = body?.paymentMethod === 'ach' ? 'ach' : 'card';
+  const isAch = paymentMethod === 'ach';
   if (!bookingId || !/^[0-9a-f-]{36}$/i.test(bookingId)) {
     return new Response(JSON.stringify({ error: 'Invalid bookingId' }), {
       status: 400,
@@ -114,9 +116,11 @@ export default async function handler(request) {
   const depositBaseCents = Math.round((totalCents * pct) / 100);
   const balanceBaseCents = totalCents - depositBaseCents;
   const depositFeeCents = cardProcessingFeeCents(depositBaseCents);
-  const depositChargeCents = cardChargeTotalCents(depositBaseCents);
+  const depositCardChargeCents = cardChargeTotalCents(depositBaseCents);
   const balanceFeeCents = cardProcessingFeeCents(balanceBaseCents);
-  const balanceChargeCents = cardChargeTotalCents(balanceBaseCents);
+  const balanceCardChargeCents = cardChargeTotalCents(balanceBaseCents);
+  const depositChargeCents = isAch ? depositBaseCents : depositCardChargeCents;
+  const balanceChargeCents = isAch ? balanceBaseCents : balanceCardChargeCents;
   const feeLabel = cardProcessingFeeLabel();
   if (depositBaseCents < 1) {
     return new Response(JSON.stringify({ ok: false, error: 'Invalid deposit amount' }), {
@@ -153,6 +157,7 @@ export default async function handler(request) {
       amountCents: depositChargeCents,
       customerId,
       serviceLabel: row.service,
+      paymentMethod,
       accessToken,
       environment,
     });
@@ -166,6 +171,7 @@ export default async function handler(request) {
         balanceCents: balanceChargeCents,
         appointmentDate: appointmentLabel,
         processingFeeLabel: feeLabel,
+        paymentMethod,
         accessToken,
         environment,
       });
@@ -182,6 +188,7 @@ export default async function handler(request) {
         balanceBaseCents,
         appointmentLabel,
         processingFeeLabel: feeLabel,
+        paymentMethod,
         accessToken,
         environment,
       });
@@ -195,12 +202,13 @@ export default async function handler(request) {
         squarePaymentId: payment.id,
         squareCustomerId: customerId,
         status: payment.status || 'COMPLETED',
-        description:
-          `Blendz By Mora deposit — ${String(row.service || 'appointment').slice(0, 360)} ` +
-          `(includes ${feeLabel} card processing fee)`,
+        description: isAch
+          ? `Blendz By Mora deposit (bank transfer) — ${String(row.service || 'appointment').slice(0, 360)}`
+          : `Blendz By Mora deposit — ${String(row.service || 'appointment').slice(0, 360)} ` +
+            `(includes ${feeLabel} card processing fee)`,
         lineItemName: String(row.service || 'Makeup service').slice(0, 512),
         subtotalCents: depositBaseCents,
-        taxCents: depositFeeCents,
+        taxCents: isAch ? 0 : depositFeeCents,
         totalCents: depositChargeCents,
         totalServiceCents: totalCents,
         depositCents: depositBaseCents,
@@ -230,7 +238,7 @@ export default async function handler(request) {
           lineItemName: balanceInvoice.lineItemName,
           lineItemNote: balanceInvoice.lineItemNote,
           subtotalCents: balanceInvoice.subtotalCents ?? balanceBaseCents,
-          taxCents: balanceInvoice.taxCents ?? balanceFeeCents,
+          taxCents: balanceInvoice.taxCents ?? (isAch ? 0 : balanceFeeCents),
           totalCents: balanceInvoice.totalCents ?? balanceChargeCents,
           totalServiceCents: totalCents,
           depositCents: depositBaseCents,
@@ -245,18 +253,22 @@ export default async function handler(request) {
       }
     }
 
-    const notify = await notifyBookingConfirmedAfterDeposit(row);
+    const achPending = isAch && String(payment.status || '').toUpperCase() === 'PENDING';
+    const notify = await notifyBookingConfirmedAfterDeposit(row, { paymentMethod, achPending });
 
     return new Response(
       JSON.stringify({
         ok: true,
         paymentId: payment.id,
+        paymentMethod,
+        paymentStatus: payment.status || null,
+        achPending,
         depositBaseCents,
         depositChargeCents,
-        depositFeeCents,
+        depositFeeCents: isAch ? 0 : depositFeeCents,
         balanceBaseCents,
         balanceChargeCents,
-        balanceFeeCents,
+        balanceFeeCents: isAch ? 0 : balanceFeeCents,
         balanceInvoiceId: balanceInvoice?.invoiceId || null,
         balanceInvoiceNumber: balanceInvoice?.invoiceNumber || null,
         balanceDueDate: balanceInvoice?.balanceDueDate || balanceDueDate,

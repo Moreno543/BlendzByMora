@@ -160,22 +160,28 @@ export async function createSquarePayment({
   amountCents,
   customerId,
   serviceLabel,
+  paymentMethod = 'card',
   accessToken,
   environment,
   squareVersion,
 }) {
+  const isAch = paymentMethod === 'ach';
   const create = await squareFetch({
     path: '/v2/payments',
     method: 'POST',
     body: {
-      idempotency_key: squareIdempotencyKey('dep-', idempotencySeed),
+      idempotency_key: squareIdempotencyKey(isAch ? 'ach-' : 'dep-', idempotencySeed),
       source_id: sourceId,
       amount_money: { amount: amountCents, currency: 'USD' },
       location_id: locationId,
       autocomplete: true,
       ...(customerId ? { customer_id: customerId } : {}),
-      statement_description_identifier: 'BlendzByMora Service'.slice(0, 20),
-      note: `Blendz By Mora deposit — ${String(serviceLabel || 'appointment').slice(0, 400)}`,
+      ...(isAch
+        ? {}
+        : { statement_description_identifier: 'BlendzByMora Service'.slice(0, 20) }),
+      note: isAch
+        ? `Blendz By Mora deposit (bank transfer) — ${String(serviceLabel || 'appointment').slice(0, 360)}`
+        : `Blendz By Mora deposit — ${String(serviceLabel || 'appointment').slice(0, 400)}`,
     },
     accessToken,
     environment,
@@ -193,17 +199,20 @@ export async function createBalanceOrder({
   balanceCents,
   appointmentDate,
   processingFeeLabel,
+  paymentMethod = 'card',
   accessToken,
   environment,
   squareVersion,
 }) {
-  const feeNote = processingFeeLabel
-    ? ` Includes ${processingFeeLabel} card processing fee.`
-    : '';
+  const isAch = paymentMethod === 'ach';
+  const feeNote =
+    !isAch && processingFeeLabel ? ` Includes ${processingFeeLabel} card processing fee.` : '';
+  const achNote = isAch ? ' Pay by bank transfer (ACH) — no card processing fee.' : '';
   const note =
     `Remaining balance for appointment ${appointmentDate || 'TBD'}. ` +
     'Your deposit was paid online when you booked.' +
-    feeNote;
+    feeNote +
+    achNote;
   const create = await squareFetch({
     path: '/v2/orders',
     method: 'POST',
@@ -242,20 +251,24 @@ export async function createAndPublishBalanceInvoice({
   balanceBaseCents,
   appointmentLabel,
   processingFeeLabel,
+  paymentMethod = 'card',
   accessToken,
   environment,
   squareVersion,
 }) {
-  const feeNote = processingFeeLabel
-    ? ` Includes ${processingFeeLabel} card processing fee.`
-    : '';
+  const isAch = paymentMethod === 'ach';
+  const feeNote =
+    !isAch && processingFeeLabel ? ` Includes ${processingFeeLabel} card processing fee.` : '';
+  const achNote = isAch ? ' Pay by bank transfer (ACH) — no card processing fee.' : '';
   const lineItemName = `${String(serviceLabel || 'Makeup service').slice(0, 480)} — balance`;
   const lineItemNote =
     `Remaining balance for appointment ${appointmentLabel || serviceDate || 'TBD'}. ` +
     'Your deposit was paid online when you booked.' +
-    feeNote;
-  const description =
-    'Blendz By Mora — remaining balance for your appointment (includes card processing fee where applicable). Due on your service date.';
+    feeNote +
+    achNote;
+  const description = isAch
+    ? 'Blendz By Mora — remaining balance for your appointment. Bank transfer (ACH) or card accepted on your Square invoice.'
+    : 'Blendz By Mora — remaining balance for your appointment (includes card processing fee where applicable). Due on your service date.';
 
   const create = await squareFetch({
     path: '/v2/invoices',
@@ -277,7 +290,7 @@ export async function createAndPublishBalanceInvoice({
         accepted_payment_methods: {
           card: true,
           square_gift_card: true,
-          bank_account: false,
+          bank_account: true,
           buy_now_pay_later: false,
           cash_app_pay: true,
         },
@@ -376,7 +389,7 @@ export async function createAndPublishDepositInvoice({
         accepted_payment_methods: {
           card: true,
           square_gift_card: true,
-          bank_account: false,
+          bank_account: true,
           buy_now_pay_later: false,
           cash_app_pay: true,
         },
