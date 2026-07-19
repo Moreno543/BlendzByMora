@@ -55,12 +55,40 @@ These are safe in `config.js` — they are public client IDs (like a Stripe publ
 | **`SQUARE_LOCATION_ID`** | Yes | No |
 | **`SQUARE_ENVIRONMENT`** | Yes | **No** — value `production` appears in code |
 | **`SQUARE_DEPOSIT_PERCENT`** | No | **No** |
+| **`SQUARE_WEBHOOK_SIGNATURE_KEY`** | For refund emails | Yes |
+| **`SQUARE_WEBHOOK_NOTIFICATION_URL`** | For refund emails | No — must match Square exactly |
 
-Also required: **`SUPABASE_URL`**, **`SUPABASE_SERVICE_ROLE_KEY`**, **`FORMSPREE_BOOKING_ID`** (same form ID as the booking form — sends confirmation email **after deposit is paid**)
+Also required: **`SUPABASE_URL`**, **`SUPABASE_SERVICE_ROLE_KEY`**, **`FORMSPREE_BOOKING_ID`** (same form ID as the booking form — sends confirmation email **after deposit is paid**, and **refund emails to you + client CC**)
 
 Run **`sql/invoices.sql`** in Supabase to store Square balance invoices and deposit payments linked to bookings.
 
+Run **`sql/webhook_events.sql`** in Supabase so refund notification emails are not sent twice.
+
 After saving, **deploy** the site.
+
+---
+
+## Step 5 — Refund emails (webhook)
+
+When you issue a **refund in Square**, the client and you both receive a **Formspree email** (client is CC’d).
+
+1. [developer.squareup.com/apps](https://developer.squareup.com/apps) → your app → **Webhooks** → **Add subscription**
+2. **Notification URL** (use your live domain exactly):
+
+   `https://blendzbymora.com/.netlify/functions/square-webhook`
+
+   If your site uses `www`, use:
+
+   `https://www.blendzbymora.com/.netlify/functions/square-webhook`
+
+3. Subscribe to events: **`refund.created`**, **`refund.updated`**
+4. Copy the subscription **Signature key**
+5. In **Netlify → Environment variables**, add:
+   - **`SQUARE_WEBHOOK_SIGNATURE_KEY`** = signature key (mark as secret)
+   - **`SQUARE_WEBHOOK_NOTIFICATION_URL`** = the **exact same URL** as step 2 (no trailing slash)
+6. **Deploy** the site
+
+Square also sends its own refund receipt to the customer; this adds your branded confirmation email to both of you via Formspree.
 
 ---
 
@@ -95,6 +123,7 @@ Service price is parsed from the dropdown (e.g. `Soft Glam - $100` → **$50** d
 ## Files
 
 - `netlify/functions/square-deposit-payment.mjs` — charges deposit, emails balance invoice
+- `netlify/functions/square-webhook.mjs` — refund emails to owner + client
 - `netlify/functions/lib/square-api.mjs` — Square API helpers
 - `app.js` — Square Web Payments card form after booking
 - `config.js` — Application ID + Location ID for the card form
