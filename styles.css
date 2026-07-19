@@ -701,7 +701,7 @@ section h2 {
 
 .booking-status.success {
   display: block;
-  color: var(--color-deposit);
+  color: var(--color-text);
 }
 
 .booking-status.error {
@@ -712,6 +712,13 @@ section h2 {
 .booking-status.loading {
   display: block;
   color: var(--color-text-muted);
+}
+
+.booking-deposit-intro {
+  margin: 0 0 1rem;
+  color: var(--color-text-muted);
+  font-size: 0.95rem;
+  line-height: 1.55;
 }
 
 .booking-deposit-link {
@@ -725,39 +732,59 @@ section h2 {
 
 .booking-deposit-pay {
   margin-top: 1.25rem;
-  padding: 1.25rem;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 8px;
+  padding: 1.5rem;
+  background: var(--color-bg-alt);
+  border: 1px solid rgba(201, 169, 98, 0.22);
+  border-radius: 12px;
   text-align: left;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+}
+
+.booking-deposit-heading {
+  margin: 0 0 1.15rem;
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-accent);
 }
 
 .booking-pay-method-tabs {
   display: flex;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
+  gap: 0.35rem;
+  margin-bottom: 1.15rem;
+  padding: 0.35rem;
   flex-wrap: wrap;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
 }
 
 .booking-pay-method-tab {
   flex: 1 1 9rem;
-  padding: 0.65rem 0.85rem;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 6px;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid transparent;
+  border-radius: 7px;
   background: transparent;
-  color: var(--color-text);
+  color: var(--color-text-muted);
   font: inherit;
+  font-size: 0.88rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
   cursor: pointer;
-  transition: border-color 0.15s ease, background 0.15s ease;
+  transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
 }
 
 .booking-pay-method-tab:hover:not(:disabled) {
-  border-color: rgba(74, 222, 128, 0.45);
+  color: var(--color-text);
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .booking-pay-method-tab.is-active {
-  border-color: var(--color-deposit);
-  background: rgba(74, 222, 128, 0.08);
-  color: var(--color-deposit);
+  border-color: rgba(201, 169, 98, 0.45);
+  background: rgba(201, 169, 98, 0.12);
+  color: var(--color-accent);
 }
 
 .booking-pay-method-tab:disabled {
@@ -765,56 +792,125 @@ section h2 {
   cursor: not-allowed;
 }
 
+.booking-deposit-summary {
+  margin-bottom: 1.15rem;
+  padding-bottom: 1.15rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
 .booking-deposit-ach-info {
   margin: 0 0 1rem;
+  padding: 0.85rem 1rem;
   color: var(--color-text-muted);
   font-size: 0.92rem;
-  line-height: 1.45;
+  line-height: 1.5;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
 }
 
 .booking-deposit-resume-note {
   margin: 0 0 0.75rem;
-  color: var(--color-deposit);
+  color: var(--color-accent);
   font-size: 0.95rem;
 }
 
 .booking-deposit-amount {
-  margin: 0 0 1rem;
-  color: var(--color-deposit);
+  margin: 0;
+  color: var(--color-text);
 }
 
 .booking-deposit-line {
-  display: block;
-  margin-bottom: 0.35rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.95rem;
+}
+
+.booking-deposit-label {
+  color: var(--color-text-muted);
+  font-size: 0.82rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .booking-deposit-fee {
   color: var(--color-text-muted);
-  font-size: 0.95rem;
+  font-size: 0.92rem;
+}
+
+.booking-deposit-fee-detail {
+  opacity: 0.85;
+  font-size: 0.85rem;
+}
+
+.booking-deposit-total {
+  margin-top: 0.35rem;
+  padding-top: 0.65rem;
+  border-top: 1px dashed rgba(255, 255, 255, 0.1);
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--color-deposit);
+}
+
+.booking-deposit-total .booking-deposit-label {
+  color: var(--color-deposit);
+  opacity: 0.85;
 }
 
 .booking-deposit-note {
   display: block;
-  margin-top: 0.65rem;
+  margin-top: 0.75rem;
   color: var(--color-text-muted);
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   line-height: 1.45;
 }
 
 .square-card-container {
   min-height: 56px;
-  margin-bottom: 1rem;
-  --sq-placeholder-color: #000000;
+  margin-bottom: 1.15rem;
+  padding: 0.85rem;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  --sq-placeholder-color: var(--color-text-muted);
 }
 
 .booking-deposit-pay-btn {
   width: 100%;
+  margin-top: 0.25rem;
+  padding: 0.9rem 1.25rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border-radius: 6px;
+  border: none;
+}
+
+.booking-deposit-pay-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
 }
 
 .booking-deposit-error {
   color: #f87171;
   margin: 0 0 0.75rem;
   font-size: 0.95rem;
+}
+
+.booking-deposit-done {
+  margin: 0;
+  padding: 1rem 1.1rem;
+  color: var(--color-deposit);
+  font-size: 0.95rem;
+  line-height: 1.55;
+  background: rgba(74, 222, 128, 0.08);
+  border: 1px solid rgba(74, 222, 128, 0.25);
+  border-radius: 8px;
 }
 
 /* Reviews */

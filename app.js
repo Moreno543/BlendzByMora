@@ -939,21 +939,25 @@ function renderDepositSuccessMessage(data) {
   );
 }
 
-/** Square card form: black field text/placeholders; red validation messages. */
+/** Square card form — dark fields matching the booking form; gold focus; red validation. */
 function squareDepositCardStyle() {
-  const green = '#4ade80';
-  const black = '#000000';
+  const gold = '#c9a962';
+  const muted = '#a0a0a0';
+  const text = '#f5f5f5';
+  const fieldBg = '#141414';
   const red = '#ef4444';
   return {
     input: {
-      color: black,
+      color: text,
+      backgroundColor: fieldBg,
       fontSize: '16px',
+      fontFamily: "'Montserrat', -apple-system, sans-serif",
     },
     'input::placeholder': {
-      color: black,
+      color: muted,
     },
     'input.is-focus::placeholder': {
-      color: black,
+      color: muted,
     },
     '.message-text': {
       color: red,
@@ -962,11 +966,12 @@ function squareDepositCardStyle() {
       color: red,
     },
     '.input-container': {
-      borderColor: 'rgba(74, 222, 128, 0.4)',
-      borderRadius: '6px',
+      borderColor: 'rgba(255, 255, 255, 0.12)',
+      borderRadius: '4px',
+      backgroundColor: fieldBg,
     },
     '.input-container.is-focus': {
-      borderColor: green,
+      borderColor: gold,
     },
   };
 }
@@ -1014,12 +1019,18 @@ async function showBookingDepositPayment({
   status.style.display = 'block';
 
   const msg = document.createElement('p');
+  msg.className = 'booking-deposit-intro';
   msg.textContent =
-    'Your appointment details are saved. Pay your deposit below to secure your date. Choose card (includes a processing fee) or bank transfer (ACH, no card fee). Your confirmation email and text (if you opted in) will be sent after payment.';
+    'Your appointment details are saved. Pay your deposit below to secure your date. Choose card (includes a processing fee) or bank transfer (ACH, no card fee).';
   status.appendChild(msg);
 
   const payBox = document.createElement('div');
   payBox.className = 'booking-deposit-pay';
+
+  const payHeading = document.createElement('h3');
+  payHeading.className = 'booking-deposit-heading';
+  payHeading.textContent = 'Secure deposit';
+  payBox.appendChild(payHeading);
 
   const methodTabs = document.createElement('div');
   methodTabs.className = 'booking-pay-method-tabs';
@@ -1044,8 +1055,8 @@ async function showBookingDepositPayment({
   methodTabs.appendChild(achTab);
   payBox.appendChild(methodTabs);
 
-  const amountLine = document.createElement('p');
-  amountLine.className = 'booking-deposit-amount';
+  const amountLine = document.createElement('div');
+  amountLine.className = 'booking-deposit-summary';
   payBox.appendChild(amountLine);
 
   const cardWrap = document.createElement('div');
@@ -1082,15 +1093,19 @@ async function showBookingDepositPayment({
     achInfo.hidden = isCard;
     if (isCard) {
       amountLine.innerHTML =
-        `<span class="booking-deposit-line"><strong>Deposit (${pct}%):</strong> ${formatUsd(depositBaseCents)}</span>` +
-        `<span class="booking-deposit-line booking-deposit-fee">Card processing fee (${feeLabel}): ${formatUsd(depositFeeCents)}</span>` +
-        `<span class="booking-deposit-line"><strong>Total due now:</strong> ${formatUsd(depositCardChargeCents)}</span>` +
+        `<div class="booking-deposit-amount">` +
+        `<span class="booking-deposit-line"><span class="booking-deposit-label">Deposit (${pct}%)</span> ${formatUsd(depositBaseCents)}</span>` +
+        `<span class="booking-deposit-line booking-deposit-fee"><span class="booking-deposit-label">Processing fee</span> ${formatUsd(depositFeeCents)} <span class="booking-deposit-fee-detail">(${feeLabel})</span></span>` +
+        `<span class="booking-deposit-line booking-deposit-total"><span class="booking-deposit-label">Total due now</span> ${formatUsd(depositCardChargeCents)}</span>` +
+        `</div>` +
         `<span class="booking-deposit-note">If you also pay your balance invoice by card, the same processing fee applies to that payment separately.</span>`;
-      payBtn.textContent = `Pay ${formatUsd(depositCardChargeCents)} deposit by card`;
+      payBtn.textContent = `Pay ${formatUsd(depositCardChargeCents)} deposit`;
     } else {
       amountLine.innerHTML =
-        `<span class="booking-deposit-line"><strong>Deposit (${pct}%):</strong> ${formatUsd(depositBaseCents)}</span>` +
-        `<span class="booking-deposit-line"><strong>Total due now:</strong> ${formatUsd(depositBaseCents)}</span>` +
+        `<div class="booking-deposit-amount">` +
+        `<span class="booking-deposit-line"><span class="booking-deposit-label">Deposit (${pct}%)</span> ${formatUsd(depositBaseCents)}</span>` +
+        `<span class="booking-deposit-line booking-deposit-total"><span class="booking-deposit-label">Total due now</span> ${formatUsd(depositBaseCents)}</span>` +
+        `</div>` +
         `<span class="booking-deposit-note">Bank transfer (ACH) has no card processing fee. Your balance invoice can also be paid by bank transfer or card.</span>`;
       payBtn.textContent = `Pay ${formatUsd(depositBaseCents)} deposit by bank transfer`;
     }
@@ -1178,6 +1193,7 @@ async function showBookingDepositPayment({
       if (data.smsSent) {
         doneText += ' You will also receive a confirmation text.';
       }
+      done.className = 'booking-deposit-done';
       done.textContent = doneText;
       status.appendChild(done);
       payBox.remove();
