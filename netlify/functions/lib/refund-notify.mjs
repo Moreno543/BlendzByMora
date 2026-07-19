@@ -1,5 +1,5 @@
 /**
- * Refund notification emails via Formspree (owner inbox + customer CC copy).
+ * Refund notification emails via Formspree (owner inbox + customer copy).
  */
 
 function env(name) {
@@ -41,11 +41,31 @@ function formatCardBrand(brand) {
     .join(' ');
 }
 
-function cardRefundPhrase(details) {
+function cardRefundPhrase(details, { forCustomer = false } = {}) {
   const brand = formatCardBrand(details.cardBrand);
   const last4 = String(details.cardLast4 || '').trim();
-  if (last4) return `The ${brand} card ending in ${last4}`;
-  return 'The original payment method';
+  if (last4) {
+    return forCustomer
+      ? `Your ${brand} card ending in ${last4}`
+      : `The ${brand} card ending in ${last4}`;
+  }
+  return forCustomer ? 'Your original payment method' : 'The original payment method';
+}
+
+async function postFormspree(formspreeId, params) {
+  const res = await fetch(`https://formspree.io/f/${formspreeId}`, {
+    method: 'POST',
+    headers: { Accept: 'application/json' },
+    body: params,
+  });
+
+  if (!res.ok) {
+    const errText = await res.text().catch(() => '');
+    console.error('[refund-notify] Formspree failed', res.status, errText);
+    return { ok: false, error: 'Formspree failed' };
+  }
+
+  return { ok: true, sent: true };
 }
 
 /**
@@ -69,8 +89,8 @@ export async function sendRefundNotificationEmails(details) {
 
   const customerCopy =
     `Hello ${first},\n\n` +
-    `This confirms that a refund of ${amountLabel} has been issued to your original payment method for your Blendz By Mora appointment (${service}${when ? ` on ${when}` : ''}).\n\n` +
-    'Please allow 2–10 business days for your bank or card issuer to post the credit.\n\n' +
+    `Your refund of ${amountLabel} is now complete. ${cardRefundPhrase(details, { forCustomer: true })} should see this reflected on your statement within the next 2–7 business days.\n\n` +
+    `Appointment: ${service}${when ? ` on ${when}` : ''}.\n\n` +
     'If you have any questions, reply to this email or contact us at BlendzByMora@gmail.com.\n\n' +
     'Kind regards,\nBlendz By Mora';
 
@@ -86,40 +106,56 @@ export async function sendRefundNotificationEmails(details) {
     (refundId ? `Square refund ID: ${refundId}\n` : '') +
     (paymentId ? `Square payment ID: ${paymentId}\n` : '') +
     (customerEmail
-      ? '\nThe client was CC’d on this notification.'
+      ? '\nThe client was sent a separate refund confirmation email.'
       : '\nNo client email was on file — only this owner copy was sent.') +
     '\n\nThanks,\nBlendz By Mora';
 
-  const params = new URLSearchParams();
-  params.append('_subject', `Blendz By Mora — refund issued (${amountLabel}) — ${customerName}`);
-  params.append('Refund notification (client copy)', customerCopy);
-  params.append('Refund notification (owner)', ownerCopy);
-  params.append('name', customerName);
-  params.append('email', String(details.customerEmail || ''));
-  params.append('phone', String(details.customerPhone || ''));
-  params.append('service', service);
-  params.append('date', date);
-  params.append('time', time);
-  params.append('refund_amount', amountLabel);
-  if (reason) params.append('refund_reason', reason);
-  if (refundId) params.append('square_refund_id', refundId);
-  if (paymentId) params.append('square_payment_id', paymentId);
+  const ownerParams = new URLSearchParams();
+  ownerParams.append('_subject', `Blendz By Mora — refund issued (${amountLabel}) — ${customerName}`);
+  ownerParams.append('Refund notification', ownerCopy);
+  ownerParams.append('name', customerName);
+  ownerParams.append('email', customerEmail);
+  ownerParams.append('phone', String(details.customerPhone || ''));
+  ownerParams.append('service', service);
+  ownerParams.append('date', date);
+  ownerParams.append('time', time);
+  ownerParams.append('refund_amount', amountLabel);
+  if (reason) ownerParams.append('refund_reason', reason);
+  if (refundId) ownerParams.append('square_refund_id', refundId);
+  if (paymentId) ownerParams.append('square_payment_id', paymentId);
 
+  const ownerResult = await postFormspree(formspreeId, ownerParams);
+  if (!ownerResult.ok) return ownerResult;
+
+  let customerSent = false;
   if (customerEmail) {
-    params.append('_cc', customerEmail);
+    const customerParams = new URLSearchParams();
+    customerParams.append(
+      '_subject',
+      `Blendz By Mora — your refund of ${amountLabel} is complete`
+    );
+    customerParams.append('Refund notification', customerCopy);
+    customerParams.append('name', customerName);
+    customerParams.append('email', customerEmail);
+    customerParams.append('phone', String(details.customerPhone || ''));
+    customerParams.append('service', service);
+    customerParams.append('date', date);
+    customerParams.append('time', time);
+    customerParams.append('refund_amount', amountLabel);
+    customerParams.append('_cc', customerEmail);
+    if (refundId) customerParams.append('square_refund_id', refundId);
+
+    const customerResult = await postFormspree(formspreeId, customerParams);
+    customerSent = customerResult.sent === true;
+    if (!customerResult.ok) {
+      console.error('[refund-notify] customer email failed', customerEmail);
+    }
   }
 
-  const res = await fetch(`https://formspree.io/f/${formspreeId}`, {
-    method: 'POST',
-    headers: { Accept: 'application/json' },
-    body: params,
-  });
-
-  if (!res.ok) {
-    const errText = await res.text().catch(() => '');
-    console.error('[refund-notify] Formspree failed', res.status, errText);
-    return { ok: false, error: 'Formspree failed' };
-  }
-
-  return { ok: true, sent: true, customerCc: Boolean(customerEmail) };
+  return {
+    ok: true,
+    sent: true,
+    customerSent,
+    customerCc: customerSent,
+  };
 }
