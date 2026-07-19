@@ -804,7 +804,7 @@ section h2 {
 .square-card-container {
   min-height: 56px;
   margin-bottom: 1rem;
-  --sq-placeholder-color: var(--color-deposit);
+  --sq-placeholder-color: #000000;
 }
 
 .booking-deposit-pay-btn {

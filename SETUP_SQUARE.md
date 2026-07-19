@@ -62,6 +62,8 @@ Also required: **`SUPABASE_URL`**, **`SUPABASE_SERVICE_ROLE_KEY`**, **`FORMSPREE
 
 Run **`sql/invoices.sql`** in Supabase to store Square balance invoices and deposit payments linked to bookings.
 
+If your `invoices` table already exists with `*_cents` integer columns, run **`sql/invoices_dollars_migration.sql`** once instead — it converts stored values to dollars (e.g. `5000` → `50.00`) and renames columns to `subtotal`, `tax`, `total`, `total_service`, `deposit`, and `balance`.
+
 Run **`sql/webhook_events.sql`** in Supabase so refund notification emails are not sent twice.
 
 After saving, **deploy** the site.

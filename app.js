@@ -939,25 +939,27 @@ function renderDepositSuccessMessage(data) {
   );
 }
 
-/** Match “Deposit due now” green on Square card placeholders and hints. */
+/** Square card form: black field text/placeholders; red validation messages. */
 function squareDepositCardStyle() {
   const green = '#4ade80';
+  const black = '#000000';
+  const red = '#ef4444';
   return {
     input: {
-      color: '#1a1a1a',
+      color: black,
       fontSize: '16px',
     },
     'input::placeholder': {
-      color: green,
+      color: black,
     },
     'input.is-focus::placeholder': {
-      color: green,
+      color: black,
     },
     '.message-text': {
-      color: green,
+      color: red,
     },
     '.message-icon': {
-      color: green,
+      color: red,
     },
     '.input-container': {
       borderColor: 'rgba(74, 222, 128, 0.4)',

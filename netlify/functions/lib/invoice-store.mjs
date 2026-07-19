@@ -1,6 +1,7 @@
 /**
  * Persist Square invoice / deposit payment rows in Supabase.
  */
+import { centsToDollars, optionalCentsToDollars } from './money.mjs';
 
 function str(v) {
   const s = String(v ?? '').trim();
@@ -31,13 +32,12 @@ export async function saveInvoiceRecord(supabase, payload) {
     description: str(payload.description),
     line_item_name: str(payload.lineItemName),
     line_item_note: str(payload.lineItemNote),
-    subtotal_cents: Number(payload.subtotalCents) || 0,
-    tax_cents: Number(payload.taxCents) || 0,
-    total_cents: Number(payload.totalCents) || 0,
-    total_service_cents:
-      payload.totalServiceCents != null ? Number(payload.totalServiceCents) : null,
-    deposit_cents: payload.depositCents != null ? Number(payload.depositCents) : null,
-    balance_cents: payload.balanceCents != null ? Number(payload.balanceCents) : null,
+    subtotal: centsToDollars(payload.subtotalCents),
+    tax: centsToDollars(payload.taxCents),
+    total: centsToDollars(payload.totalCents),
+    total_service: optionalCentsToDollars(payload.totalServiceCents),
+    deposit: optionalCentsToDollars(payload.depositCents),
+    balance: optionalCentsToDollars(payload.balanceCents),
     due_date: str(payload.dueDate),
     public_url: str(payload.publicUrl),
     square_environment: str(payload.squareEnvironment) || 'production',
