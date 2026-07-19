@@ -86,6 +86,7 @@ function buildCustomerRefundCopy(details, amountLabel) {
   return (
     `Hello ${first},\n\n` +
     `Your refund of ${amountLabel} is now complete. ${cardRefundPhrase(details)} should see this reflected on your statement within the next 2–7 business days.\n\n` +
+    `If your original payment included a Square card processing fee, that fee is non-refundable and is not included in the refund amount.\n\n` +
     `Appointment: ${service}${when ? ` on ${when}` : ''}.\n\n` +
     'If you have any questions, reply to this email or contact us at BlendzByMora@gmail.com.\n\n' +
     'Kind regards,\nBlendz By Mora'
@@ -120,6 +121,7 @@ export async function sendRefundNotificationEmails(details) {
   const time = String(details.appointmentTime || '').trim();
   const reason = String(details.reason || '').trim();
   const customerEmail = String(details.customerEmail || '').trim();
+  const ownerFallback = env('FORMSPREE_OWNER_EMAIL') || 'BlendzByMora@gmail.com';
 
   const ownerSummary = buildOwnerRefundSummary(details, amountLabel);
   const customerCopy = buildCustomerRefundCopy(details, amountLabel);
@@ -128,7 +130,7 @@ export async function sendRefundNotificationEmails(details) {
   params.append('Owner notification', ownerSummary);
   params.append('Customer refund confirmation', customerCopy);
   params.append('name', customerName);
-  params.append('email', customerEmail);
+  params.append('email', customerEmail || ownerFallback);
   params.append('phone', String(details.customerPhone || ''));
   params.append('service', service);
   params.append('date', date);

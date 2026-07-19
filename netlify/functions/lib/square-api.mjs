@@ -56,6 +56,18 @@ export async function getSquarePayment({ paymentId, accessToken, environment, sq
   return json?.payment || null;
 }
 
+/** Fetch Square customer profile (email, name, phone) for refund notifications. */
+export async function getSquareCustomer({ customerId, accessToken, environment, squareVersion }) {
+  if (!customerId) return null;
+  const json = await squareFetch({
+    path: `/v2/customers/${encodeURIComponent(customerId)}`,
+    accessToken,
+    environment,
+    squareVersion,
+  });
+  return json?.customer || null;
+}
+
 function splitName(fullName) {
   const parts = String(fullName || '').trim().split(/\s+/).filter(Boolean);
   if (!parts.length) return { given_name: 'Client', family_name: undefined };
@@ -159,6 +171,7 @@ export async function createSquarePayment({
   sourceId,
   amountCents,
   customerId,
+  bookingId,
   serviceLabel,
   paymentMethod = 'card',
   accessToken,
@@ -166,6 +179,7 @@ export async function createSquarePayment({
   squareVersion,
 }) {
   const isAch = paymentMethod === 'ach';
+  const referenceId = String(bookingId || '').trim().slice(0, 40) || undefined;
   const create = await squareFetch({
     path: '/v2/payments',
     method: 'POST',
@@ -175,6 +189,7 @@ export async function createSquarePayment({
       amount_money: { amount: amountCents, currency: 'USD' },
       location_id: locationId,
       autocomplete: true,
+      ...(referenceId ? { reference_id: referenceId } : {}),
       ...(customerId ? { customer_id: customerId } : {}),
       ...(isAch
         ? {}

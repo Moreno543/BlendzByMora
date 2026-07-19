@@ -182,6 +182,7 @@ export default async function handler(request) {
       sourceId,
       amountCents: depositChargeCents,
       customerId,
+      bookingId,
       serviceLabel: row.service,
       paymentMethod,
       accessToken,

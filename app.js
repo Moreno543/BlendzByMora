@@ -921,21 +921,25 @@ async function submitDepositPayment({ bookingId, sourceId, attemptId, paymentMet
 }
 
 function renderDepositSuccessMessage(data) {
+  const balanceNote =
+    'The balance may be paid before or on the day of service. We accept credit and debit cards, cash, and Zelle.';
   const achPending = data.achPending === true;
   const paidByAch = data.paymentMethod === 'ach';
   if (achPending) {
     return (
       'Bank transfer submitted — thank you! Your appointment is secured while the transfer completes (typically 2–3 business days). ' +
-      'Square will email you an invoice for the remaining balance due on your service date. You can pay that invoice by bank transfer (no card fee) or by card.'
+      `Square will email you an invoice for the remaining balance. ${balanceNote}`
     );
   }
   if (paidByAch) {
     return (
-      'Deposit paid by bank transfer — thank you! Your appointment is secured. Square will email you an invoice for the remaining balance due on your service date. Bank transfer (ACH) has no card processing fee; card payments include a 3.3% + $0.30 fee per transaction.'
+      'Deposit paid by bank transfer — thank you! Your appointment is secured. ' +
+      `Square will email you an invoice for the remaining balance. ${balanceNote}`
     );
   }
   return (
-    'Deposit paid — thank you! Your appointment is secured. Square will email you an invoice for the remaining balance due on your service date (card payments include a 3.3% + $0.30 processing fee on each transaction).'
+    'Deposit paid — thank you! Your appointment is secured. ' +
+    `Square will email you an invoice for the remaining balance. ${balanceNote}`
   );
 }
 
