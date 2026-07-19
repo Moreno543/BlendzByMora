@@ -18,6 +18,14 @@ function extractRefund(payload) {
   return null;
 }
 
+function extractInvoice(payload) {
+  const obj = payload?.data?.object;
+  if (!obj || typeof obj !== 'object') return null;
+  if (obj.invoice && typeof obj.invoice === 'object') return obj.invoice;
+  if (obj.status && (obj.invoice_number || obj.primary_recipient || obj.payment_requests)) return obj;
+  return null;
+}
+
 function refundShouldNotify(refund) {
   const status = String(refund?.status || '').toUpperCase();
   if (!status) return false;
@@ -25,16 +33,31 @@ function refundShouldNotify(refund) {
   return true;
 }
 
+function invoiceRefundShouldNotify(invoice) {
+  const status = String(invoice?.status || '').toUpperCase();
+  return status === 'REFUNDED' || status === 'PARTIALLY_REFUNDED';
+}
+
+function invoiceRefundAmountCents(invoice) {
+  const requests = invoice?.payment_requests;
+  if (!Array.isArray(requests)) return null;
+  let total = 0;
+  for (const req of requests) {
+    const completed = req?.total_completed_amount_money?.amount;
+    if (Number.isFinite(completed)) total += completed;
+  }
+  return total > 0 ? total : null;
+}
+
 /** @returns {{ duplicate: boolean, dedupeSkipped?: boolean }} */
-async function markRefundNotified(supabase, refundId, eventType) {
-  const eventId = `refund:${refundId}`;
+async function markWebhookProcessed(supabase, eventId, eventType) {
   const { error } = await supabase.from('webhook_events').insert({
     event_id: eventId,
     event_type: eventType,
   });
   if (error?.code === '23505') return { duplicate: true };
   if (error) {
-    console.warn('[square-webhook] dedupe table unavailable, sending anyway:', error.message);
+    console.warn('[square-webhook] dedupe insert failed, continuing:', error.message);
     return { duplicate: false, dedupeSkipped: true };
   }
   return { duplicate: false };
@@ -90,6 +113,73 @@ async function lookupBookingForPayment(supabase, paymentId) {
   return null;
 }
 
+async function lookupBookingForSquareInvoice(supabase, squareInvoiceId) {
+  if (!squareInvoiceId) return null;
+
+  const { data: invoiceRow } = await supabase
+    .from('invoices')
+    .select(
+      'booking_id, customer_name, customer_email, customer_phone, service_label, service_date, appointment_time, total_cents'
+    )
+    .eq('square_invoice_id', squareInvoiceId)
+    .maybeSingle();
+
+  if (invoiceRow?.customer_email) {
+    return {
+      customerName: invoiceRow.customer_name,
+      customerEmail: invoiceRow.customer_email,
+      customerPhone: invoiceRow.customer_phone,
+      serviceLabel: invoiceRow.service_label,
+      serviceDate: invoiceRow.service_date,
+      appointmentTime: invoiceRow.appointment_time,
+      bookingId: invoiceRow.booking_id,
+      amountCents: invoiceRow.total_cents,
+    };
+  }
+
+  if (invoiceRow?.booking_id) {
+    const { data: booking } = await supabase
+      .from('bookings')
+      .select('id, name, email, phone, service, date, time')
+      .eq('id', invoiceRow.booking_id)
+      .maybeSingle();
+    if (booking) {
+      return {
+        customerName: booking.name,
+        customerEmail: booking.email,
+        customerPhone: booking.phone,
+        serviceLabel: booking.service,
+        serviceDate: String(booking.date || '').slice(0, 10),
+        appointmentTime: booking.time,
+        bookingId: booking.id,
+        amountCents: invoiceRow.total_cents,
+      };
+    }
+  }
+
+  return null;
+}
+
+function bookingFromSquareInvoice(invoice, existing) {
+  const recipient = invoice?.primary_recipient || {};
+  const given = String(recipient.given_name || '').trim();
+  const family = String(recipient.family_name || '').trim();
+  const name = [given, family].filter(Boolean).join(' ') || existing?.customerName || 'Client';
+
+  return {
+    customerName: name,
+    customerEmail:
+      existing?.customerEmail || String(recipient.email_address || '').trim() || null,
+    customerPhone:
+      existing?.customerPhone || String(recipient.phone_number || '').trim() || null,
+    serviceLabel: existing?.serviceLabel || 'Makeup appointment',
+    serviceDate: existing?.serviceDate || String(invoice?.sale_or_service_date || '').slice(0, 10) || null,
+    appointmentTime: existing?.appointmentTime || null,
+    bookingId: existing?.bookingId || null,
+    amountCents: existing?.amountCents ?? invoiceRefundAmountCents(invoice),
+  };
+}
+
 async function enrichFromSquarePayment(paymentId, existing) {
   const accessToken = env('SQUARE_ACCESS_TOKEN');
   if (!accessToken || !paymentId) return existing;
@@ -109,15 +199,106 @@ async function enrichFromSquarePayment(paymentId, existing) {
       customerName: existing?.customerName || 'Client',
       customerEmail: existing?.customerEmail || buyerEmail || null,
       customerPhone: existing?.customerPhone || null,
-      serviceLabel: existing?.serviceLabel || note.replace(/^Blendz By Mora deposit — /, '') || 'Makeup appointment',
+      serviceLabel:
+        existing?.serviceLabel ||
+        note.replace(/^Blendz By Mora deposit — /, '') ||
+        'Makeup appointment',
       serviceDate: existing?.serviceDate || null,
       appointmentTime: existing?.appointmentTime || null,
       bookingId: existing?.bookingId || null,
+      amountCents: existing?.amountCents ?? payment.amount_money?.amount ?? null,
     };
   } catch (err) {
     console.warn('[square-webhook] Square payment lookup failed', err);
     return existing;
   }
+}
+
+async function handlePaymentRefund(supabase, payload, eventType) {
+  const refund = extractRefund(payload);
+  if (!refund?.id) {
+    return { ok: true, ignored: true, reason: 'no_refund' };
+  }
+
+  if (!refundShouldNotify(refund)) {
+    return { ok: true, ignored: true, status: refund.status || 'unknown' };
+  }
+
+  const paymentId = String(refund.payment_id || '').trim();
+  let booking = await lookupBookingForPayment(supabase, paymentId);
+  booking = await enrichFromSquarePayment(paymentId, booking);
+
+  const amountCents = refund.amount_money?.amount ?? refund.amount?.amount ?? booking?.amountCents ?? null;
+
+  const notify = await sendRefundNotificationEmails({
+    amountCents,
+    customerName: booking?.customerName,
+    customerEmail: booking?.customerEmail,
+    customerPhone: booking?.customerPhone,
+    serviceLabel: booking?.serviceLabel,
+    serviceDate: booking?.serviceDate,
+    appointmentTime: booking?.appointmentTime,
+    reason: refund.reason,
+    refundId: refund.id,
+    paymentId,
+  });
+
+  if (paymentId) {
+    await supabase
+      .from('invoices')
+      .update({ status: 'REFUNDED', updated_at: new Date().toISOString() })
+      .eq('square_payment_id', paymentId);
+  }
+
+  return {
+    ok: true,
+    eventType,
+    refundId: refund.id,
+    emailSent: notify.sent === true,
+    customerCc: notify.customerCc === true,
+    customerEmailUsed: booking?.customerEmail || null,
+  };
+}
+
+async function handleInvoiceRefunded(supabase, payload, eventType) {
+  const invoice = extractInvoice(payload);
+  if (!invoice?.id) {
+    return { ok: true, ignored: true, reason: 'no_invoice' };
+  }
+
+  if (!invoiceRefundShouldNotify(invoice)) {
+    return { ok: true, ignored: true, status: invoice.status || 'unknown' };
+  }
+
+  let booking = await lookupBookingForSquareInvoice(supabase, invoice.id);
+  booking = bookingFromSquareInvoice(invoice, booking);
+
+  const notify = await sendRefundNotificationEmails({
+    amountCents: booking?.amountCents ?? invoiceRefundAmountCents(invoice),
+    customerName: booking?.customerName,
+    customerEmail: booking?.customerEmail,
+    customerPhone: booking?.customerPhone,
+    serviceLabel: booking?.serviceLabel,
+    serviceDate: booking?.serviceDate,
+    appointmentTime: booking?.appointmentTime,
+    reason: 'Square invoice refund',
+    refundId: invoice.id,
+    paymentId: invoice.order_id || '',
+  });
+
+  await supabase
+    .from('invoices')
+    .update({ status: 'REFUNDED', updated_at: new Date().toISOString() })
+    .eq('square_invoice_id', invoice.id);
+
+  return {
+    ok: true,
+    eventType,
+    invoiceId: invoice.id,
+    emailSent: notify.sent === true,
+    customerCc: notify.customerCc === true,
+    customerEmailUsed: booking?.customerEmail || null,
+  };
 }
 
 export default async function handler(request) {
@@ -162,26 +343,8 @@ export default async function handler(request) {
   }
 
   const eventType = String(payload?.type || '');
-  console.log('[square-webhook] received', eventType, payload?.event_id || '');
-
-  if (!eventType.startsWith('refund.')) {
-    return new Response(JSON.stringify({ ok: true, ignored: true, eventType }), { status: 200 });
-  }
-
-  const refund = extractRefund(payload);
-  if (!refund?.id) {
-    console.warn('[square-webhook] no refund in payload', eventType);
-    return new Response(JSON.stringify({ ok: true, ignored: true, reason: 'no_refund' }), {
-      status: 200,
-    });
-  }
-
-  if (!refundShouldNotify(refund)) {
-    return new Response(
-      JSON.stringify({ ok: true, ignored: true, status: refund.status || 'unknown' }),
-      { status: 200 }
-    );
-  }
+  const squareEventId = String(payload?.event_id || '').trim();
+  console.log('[square-webhook] received', eventType, squareEventId || '');
 
   const supabaseUrl = env('SUPABASE_URL');
   const serviceKey = env('SUPABASE_SERVICE_ROLE_KEY');
@@ -193,50 +356,31 @@ export default async function handler(request) {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
-  const dedupe = await markRefundNotified(supabase, refund.id, eventType);
-  if (dedupe.duplicate) {
-    return new Response(JSON.stringify({ ok: true, duplicate: true }), { status: 200 });
+  if (squareEventId) {
+    const audit = await markWebhookProcessed(supabase, squareEventId, eventType || 'unknown');
+    if (audit.duplicate) {
+      return new Response(JSON.stringify({ ok: true, duplicate: true, eventType }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
   }
 
-  const paymentId = String(refund.payment_id || '').trim();
-  let booking = await lookupBookingForPayment(supabase, paymentId);
-  booking = await enrichFromSquarePayment(paymentId, booking);
+  let result;
+  if (eventType.startsWith('refund.')) {
+    result = await handlePaymentRefund(supabase, payload, eventType);
+  } else if (eventType === 'invoice.refunded') {
+    result = await handleInvoiceRefunded(supabase, payload, eventType);
+  } else {
+    result = { ok: true, ignored: true, eventType };
+  }
 
-  const amountCents = refund.amount_money?.amount ?? refund.amount?.amount ?? null;
+  if (result.emailSent === false && !result.ignored && !result.duplicate) {
+    console.error('[square-webhook] email not sent', result);
+  }
 
-  const notify = await sendRefundNotificationEmails({
-    amountCents,
-    customerName: booking?.customerName,
-    customerEmail: booking?.customerEmail,
-    customerPhone: booking?.customerPhone,
-    serviceLabel: booking?.serviceLabel,
-    serviceDate: booking?.serviceDate,
-    appointmentTime: booking?.appointmentTime,
-    reason: refund.reason,
-    refundId: refund.id,
-    paymentId,
+  return new Response(JSON.stringify(result), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
   });
-
-  if (!notify.sent && !notify.skipped) {
-    console.error('[square-webhook] email failed', notify);
-  }
-
-  if (paymentId) {
-    await supabase
-      .from('invoices')
-      .update({ status: 'REFUNDED', updated_at: new Date().toISOString() })
-      .eq('square_payment_id', paymentId);
-  }
-
-  return new Response(
-    JSON.stringify({
-      ok: true,
-      eventType,
-      refundId: refund.id,
-      emailSent: notify.sent === true,
-      customerCc: notify.customerCc === true,
-      customerEmailUsed: booking?.customerEmail || null,
-    }),
-    { status: 200, headers: { 'Content-Type': 'application/json' } }
-  );
 }

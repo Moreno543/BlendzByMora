@@ -33,6 +33,7 @@ export async function sendRefundNotificationEmails(details) {
   const reason = String(details.reason || '').trim();
   const refundId = String(details.refundId || '').trim();
   const paymentId = String(details.paymentId || '').trim();
+  const customerEmail = String(details.customerEmail || '').trim();
 
   const customerCopy =
     `Hello ${first},\n\n` +
@@ -70,7 +71,6 @@ export async function sendRefundNotificationEmails(details) {
   if (refundId) params.append('square_refund_id', refundId);
   if (paymentId) params.append('square_payment_id', paymentId);
 
-  const customerEmail = String(details.customerEmail || '').trim();
   if (customerEmail) {
     params.append('_cc', customerEmail);
   }
