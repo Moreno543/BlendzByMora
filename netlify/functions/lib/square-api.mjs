@@ -162,6 +162,7 @@ export async function createSquarePayment({
       location_id: locationId,
       autocomplete: true,
       ...(customerId ? { customer_id: customerId } : {}),
+      statement_description_identifier: 'BlendzByMora Service'.slice(0, 20),
       note: `Blendz By Mora deposit — ${String(serviceLabel || 'appointment').slice(0, 400)}`,
     },
     accessToken,

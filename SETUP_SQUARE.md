@@ -108,6 +108,23 @@ Service price is parsed from the dropdown (e.g. `Soft Glam - $100` → **$50** d
 
 ---
 
+## Card statement name (Amex / Visa / etc.)
+
+What customers see on their card activity (e.g. **BlendzByMora Service**) comes from **Square**, not your website.
+
+**1. Square Dashboard (required)** — set your public business name:
+
+1. Go to [squareup.com/dashboard](https://squareup.com/dashboard)
+2. **Account & Settings** → **Business** → **Business information**
+3. Set **Business name** to **`BlendzByMora`** (or **`BlendzByMora Service`** if it fits)
+4. Save
+
+**2. Website (already configured)** — deposit payments send `statement_description_identifier: BlendzByMora Service` so Square can include it on the statement (format is typically `SQ *` + business name + descriptor; banks may shorten it).
+
+**Note:** **Pending** charges on Amex often show a generic label like “SERVICE TRANSACTION” until the payment **posts** (1–3 days). After posting, the Square business name usually appears. Old payments won’t change — only **new** deposits after deploy.
+
+---
+
 ## Troubleshooting
 
 | Issue | Check |
