@@ -23,6 +23,7 @@ export default async function handler(request) {
       notificationUrl: notificationUrl || null,
       hasSupabase: Boolean(env('SUPABASE_URL') && env('SUPABASE_SERVICE_ROLE_KEY')),
       hasFormspree: Boolean(env('FORMSPREE_BOOKING_ID')),
+      hasFormspreeRefundForm: Boolean(env('FORMSPREE_REFUND_ID')),
       hasSquareApi: Boolean(env('SQUARE_ACCESS_TOKEN')),
     }),
     { status: 200, headers: { 'Content-Type': 'application/json' } }

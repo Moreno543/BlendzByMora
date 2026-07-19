@@ -3,6 +3,7 @@
  */
 import { hasOutboundSender } from './twilio-send.mjs';
 import { notifyOwnerSms } from './owner-notify.mjs';
+import { postFormspreeJson } from './formspree-post.mjs';
 
 function env(name) {
   return String(process.env[name] ?? '').trim();
@@ -43,36 +44,12 @@ function formatCardBrand(brand) {
     .join(' ');
 }
 
-function cardRefundPhrase(details) {
+function paymentMethodLabel(details) {
   const brand = formatCardBrand(details.cardBrand);
   const last4 = String(details.cardLast4 || '').trim();
-  if (last4) return `Your ${brand} card ending in ${last4}`;
-  return 'Your original payment method';
-}
-
-function buildOwnerRefundSummary(details, amountLabel) {
-  const customerName = String(details.customerName || 'Client').trim();
-  const service = String(details.serviceLabel || 'Makeup appointment').trim();
-  const date = String(details.serviceDate || '').trim();
-  const time = String(details.appointmentTime || '').trim();
-  const when = [date, time].filter(Boolean).join(' at ') || '—';
-  const customerEmail = String(details.customerEmail || '').trim() || '—';
-  const customerPhone = String(details.customerPhone || '').trim() || '—';
-  const card = cardRefundPhrase(details);
-  const reason = String(details.reason || '').trim();
-
-  return (
-    `Refund issued for ${customerName} — ${amountLabel}\n\n` +
-    `Client: ${customerName}\n` +
-    `Email: ${customerEmail}\n` +
-    `Phone: ${customerPhone}\n` +
-    `Service: ${service}\n` +
-    `Appointment: ${when}\n` +
-    `Refund amount: ${amountLabel}\n` +
-    `Payment method: ${card}\n` +
-    (reason ? `Reason: ${reason}\n` : '') +
-    '\nThe client has been copied on this email with their refund confirmation.'
-  );
+  if (last4) return `${brand} (last 4: ${last4})`;
+  if (brand !== 'card') return brand;
+  return 'Card on file';
 }
 
 function buildCustomerRefundCopy(details, amountLabel) {
@@ -85,33 +62,20 @@ function buildCustomerRefundCopy(details, amountLabel) {
 
   return (
     `Hello ${first},\n\n` +
-    `Your refund of ${amountLabel} is now complete. ${cardRefundPhrase(details)} should see this reflected on your statement within the next 2–7 business days.\n\n` +
-    `If your original payment included a Square card processing fee, that fee is non-refundable and is not included in the refund amount.\n\n` +
+    `We processed a return of ${amountLabel} to your original payment method. ` +
+    'It should appear on your statement within 2–7 business days.\n\n' +
+    'If your deposit was paid by card through Square, any card processing fee from the original payment is not included in this return amount.\n\n' +
     `Appointment: ${service}${when ? ` on ${when}` : ''}.\n\n` +
-    'If you have any questions, reply to this email or contact us at BlendzByMora@gmail.com.\n\n' +
+    'If you have any questions, reply to this email.\n\n' +
     'Kind regards,\nBlendz By Mora'
   );
-}
-
-async function postFormspree(formspreeId, params) {
-  const res = await fetch(`https://formspree.io/f/${formspreeId}`, {
-    method: 'POST',
-    headers: { Accept: 'application/json' },
-    body: params,
-  });
-  if (!res.ok) {
-    const errText = await res.text().catch(() => '');
-    console.error('[refund-notify] Formspree failed', res.status, errText);
-    return { ok: false, error: 'Formspree failed' };
-  }
-  return { ok: true, sent: true };
 }
 
 /**
  * @param {Record<string, unknown>} details
  */
 export async function sendRefundNotificationEmails(details) {
-  const formspreeId = env('FORMSPREE_BOOKING_ID');
+  const formspreeId = env('FORMSPREE_REFUND_ID') || env('FORMSPREE_BOOKING_ID');
   if (!formspreeId) return { ok: true, skipped: true, reason: 'missing_env' };
 
   const amountLabel = formatUsd(details.amountCents);
@@ -122,31 +86,30 @@ export async function sendRefundNotificationEmails(details) {
   const reason = String(details.reason || '').trim();
   const customerEmail = String(details.customerEmail || '').trim();
   const ownerFallback = env('FORMSPREE_OWNER_EMAIL') || 'BlendzByMora@gmail.com';
+  const when = [date, time].filter(Boolean).join(' · ') || date || 'appointment';
 
-  const ownerSummary = buildOwnerRefundSummary(details, amountLabel);
-  const customerCopy = buildCustomerRefundCopy(details, amountLabel);
+  // Match the booking confirmation field layout so Formshield treats this like a normal booking email.
+  const confirmationCopy = buildCustomerRefundCopy(details, amountLabel);
 
-  const params = new URLSearchParams();
-  params.append('Owner notification', ownerSummary);
-  params.append('Customer refund confirmation', customerCopy);
-  params.append('name', customerName);
-  params.append('email', customerEmail || ownerFallback);
-  params.append('phone', String(details.customerPhone || ''));
-  params.append('service', service);
-  params.append('date', date);
-  params.append('time', time);
-  params.append('refund_amount', amountLabel);
-  if (reason) params.append('refund_reason', reason);
-  params.append(
-    '_subject',
-    `Blendz By Mora — refund issued for ${customerName} (${amountLabel})`
-  );
-  if (customerEmail) {
-    params.append('_cc', customerEmail);
-    params.append('_replyto', customerEmail);
-  }
+  const fields = {
+    event: 'refund_notification',
+    'Appointment confirmation': confirmationCopy,
+    name: customerName,
+    email: customerEmail || ownerFallback,
+    phone: String(details.customerPhone || ''),
+    service,
+    date,
+    time,
+    amount_returned: amountLabel,
+    payment_method: paymentMethodLabel(details),
+    _subject: `Blendz By Mora — deposit return confirmation (${when})`,
+    _replyto: customerEmail || ownerFallback,
+  };
 
-  const email = await postFormspree(formspreeId, params);
+  if (reason) fields.return_note = reason;
+  if (customerEmail) fields._cc = customerEmail;
+
+  const email = await postFormspreeJson(formspreeId, fields);
 
   let smsSent = false;
   const ownerPhone = env('TWILIO_OWNER_NOTIFY_PHONE');
@@ -162,7 +125,7 @@ export async function sendRefundNotificationEmails(details) {
     hasOutboundSender(messagingServiceSid, fromNum) &&
     String(process.env.TWILIO_SMS_DISABLED || '').toLowerCase() !== 'true'
   ) {
-    const smsBody = `Refund issued: ${customerName} — ${amountLabel} for ${service}.`.slice(0, 320);
+    const smsBody = `Deposit return: ${customerName} — ${amountLabel} for ${service}.`.slice(0, 320);
     const sms = await notifyOwnerSms({
       sid,
       token,
