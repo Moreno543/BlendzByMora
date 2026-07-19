@@ -1,5 +1,5 @@
 /**
- * Refund notification emails via Formspree (owner inbox + customer CC — same as booking).
+ * Refund notification emails via Formspree (owner inbox + customer CC).
  */
 import { hasOutboundSender } from './twilio-send.mjs';
 import { notifyOwnerSms } from './owner-notify.mjs';
@@ -44,17 +44,15 @@ function formatCardBrand(brand) {
     .join(' ');
 }
 
-function paymentMethodLabel(details) {
+function cardRefundPhrase(details) {
   const brand = formatCardBrand(details.cardBrand);
   const last4 = String(details.cardLast4 || '').trim();
-  if (last4) return `${brand} (last 4: ${last4})`;
-  if (brand !== 'card') return brand;
-  return 'Card on file';
+  if (last4) return `Your ${brand} card ending in ${last4}`;
+  return 'Your original payment method';
 }
 
 function buildCustomerRefundCopy(details, amountLabel) {
-  const customerName = String(details.customerName || 'Client').trim();
-  const first = firstName(customerName);
+  const first = firstName(details.customerName);
   const service = String(details.serviceLabel || 'Makeup appointment').trim();
   const date = String(details.serviceDate || '').trim();
   const time = String(details.appointmentTime || '').trim();
@@ -62,11 +60,9 @@ function buildCustomerRefundCopy(details, amountLabel) {
 
   return (
     `Hello ${first},\n\n` +
-    `We processed a return of ${amountLabel} to your original payment method. ` +
-    'It should appear on your statement within 2–7 business days.\n\n' +
-    'If your deposit was paid by card through Square, any card processing fee from the original payment is not included in this return amount.\n\n' +
+    `Your refund of ${amountLabel} is now complete. ${cardRefundPhrase(details)} should see this reflected on your statement within the next 2–7 business days.\n\n` +
     `Appointment: ${service}${when ? ` on ${when}` : ''}.\n\n` +
-    'If you have any questions, reply to this email.\n\n' +
+    'If you have any questions, reply to this email or contact us at BlendzByMora@gmail.com.\n\n' +
     'Kind regards,\nBlendz By Mora'
   );
 }
@@ -83,30 +79,20 @@ export async function sendRefundNotificationEmails(details) {
   const service = String(details.serviceLabel || 'Makeup appointment').trim();
   const date = String(details.serviceDate || '').trim();
   const time = String(details.appointmentTime || '').trim();
-  const reason = String(details.reason || '').trim();
   const customerEmail = String(details.customerEmail || '').trim();
   const ownerFallback = env('FORMSPREE_OWNER_EMAIL') || 'BlendzByMora@gmail.com';
   const when = [date, time].filter(Boolean).join(' · ') || date || 'appointment';
 
-  // Match the booking confirmation field layout so Formshield treats this like a normal booking email.
-  const confirmationCopy = buildCustomerRefundCopy(details, amountLabel);
+  const customerCopy = buildCustomerRefundCopy(details, amountLabel);
 
+  // One customer-facing block only — no owner summary or extra fields that Formspree lists below the message.
   const fields = {
-    event: 'refund_notification',
-    'Appointment confirmation': confirmationCopy,
-    name: customerName,
+    'Customer refund confirmation': customerCopy,
     email: customerEmail || ownerFallback,
-    phone: String(details.customerPhone || ''),
-    service,
-    date,
-    time,
-    amount_returned: amountLabel,
-    payment_method: paymentMethodLabel(details),
-    _subject: `Blendz By Mora — deposit return confirmation (${when})`,
+    _subject: `Blendz By Mora — refund confirmation (${when})`,
     _replyto: customerEmail || ownerFallback,
   };
 
-  if (reason) fields.return_note = reason;
   if (customerEmail) fields._cc = customerEmail;
 
   const email = await postFormspreeJson(formspreeId, fields);
@@ -125,7 +111,7 @@ export async function sendRefundNotificationEmails(details) {
     hasOutboundSender(messagingServiceSid, fromNum) &&
     String(process.env.TWILIO_SMS_DISABLED || '').toLowerCase() !== 'true'
   ) {
-    const smsBody = `Deposit return: ${customerName} — ${amountLabel} for ${service}.`.slice(0, 320);
+    const smsBody = `Refund issued: ${customerName} — ${amountLabel} for ${service}.`.slice(0, 320);
     const sms = await notifyOwnerSms({
       sid,
       token,
