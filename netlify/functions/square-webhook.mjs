@@ -194,6 +194,7 @@ async function enrichFromSquarePayment(paymentId, existing) {
 
     const buyerEmail = String(payment.buyer_email_address || '').trim();
     const note = String(payment.note || '').trim();
+    const card = payment.card_details?.card || {};
 
     return {
       customerName: existing?.customerName || 'Client',
@@ -207,6 +208,8 @@ async function enrichFromSquarePayment(paymentId, existing) {
       appointmentTime: existing?.appointmentTime || null,
       bookingId: existing?.bookingId || null,
       amountCents: existing?.amountCents ?? payment.amount_money?.amount ?? null,
+      cardBrand: existing?.cardBrand || card.card_brand || null,
+      cardLast4: existing?.cardLast4 || card.last_4 || null,
     };
   } catch (err) {
     console.warn('[square-webhook] Square payment lookup failed', err);
@@ -241,6 +244,8 @@ async function handlePaymentRefund(supabase, payload, eventType) {
     reason: refund.reason,
     refundId: refund.id,
     paymentId,
+    cardBrand: booking?.cardBrand,
+    cardLast4: booking?.cardLast4,
   });
 
   if (paymentId) {

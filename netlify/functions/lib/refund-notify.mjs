@@ -16,6 +16,38 @@ function firstName(fullName) {
   return String(fullName || '').trim().split(/\s+/)[0] || 'there';
 }
 
+function formatCardBrand(brand) {
+  const key = String(brand || '')
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, '_');
+  const labels = {
+    AMERICAN_EXPRESS: 'American Express',
+    AMEX: 'American Express',
+    VISA: 'Visa',
+    MASTERCARD: 'Mastercard',
+    DISCOVER: 'Discover',
+    DISCOVER_DINERS: 'Discover Diners',
+    JCB: 'JCB',
+    CHINA_UNIONPAY: 'UnionPay',
+    SQUARE_GIFT_CARD: 'Square gift card',
+  };
+  if (labels[key]) return labels[key];
+  if (!key) return 'card';
+  return key
+    .toLowerCase()
+    .split('_')
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+}
+
+function cardRefundPhrase(details) {
+  const brand = formatCardBrand(details.cardBrand);
+  const last4 = String(details.cardLast4 || '').trim();
+  if (last4) return `The ${brand} card ending in ${last4}`;
+  return 'The original payment method';
+}
+
 /**
  * @param {Record<string, unknown>} details
  */
@@ -43,7 +75,8 @@ export async function sendRefundNotificationEmails(details) {
     'Kind regards,\nBlendz By Mora';
 
   const ownerCopy =
-    `A refund of ${amountLabel} was processed in Square.\n\n` +
+    `Hello ${customerName},\n\n` +
+    `The ${amountLabel} refund you requested is now complete. ${cardRefundPhrase(details)} should see this reflected on their statement within the next 2–7 business days.\n\n` +
     `Client: ${customerName}\n` +
     `Email: ${details.customerEmail || '—'}\n` +
     `Phone: ${details.customerPhone || '—'}\n` +
@@ -54,7 +87,8 @@ export async function sendRefundNotificationEmails(details) {
     (paymentId ? `Square payment ID: ${paymentId}\n` : '') +
     (customerEmail
       ? '\nThe client was CC’d on this notification.'
-      : '\nNo client email was on file — only this owner copy was sent.');
+      : '\nNo client email was on file — only this owner copy was sent.') +
+    '\n\nThanks,\nBlendz By Mora';
 
   const params = new URLSearchParams();
   params.append('_subject', `Blendz By Mora — refund issued (${amountLabel}) — ${customerName}`);
