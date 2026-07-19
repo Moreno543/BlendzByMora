@@ -192,13 +192,18 @@ export async function createBalanceOrder({
   serviceLabel,
   balanceCents,
   appointmentDate,
+  processingFeeLabel,
   accessToken,
   environment,
   squareVersion,
 }) {
+  const feeNote = processingFeeLabel
+    ? ` Includes ${processingFeeLabel} card processing fee.`
+    : '';
   const note =
     `Remaining balance for appointment ${appointmentDate || 'TBD'}. ` +
-    'Your deposit was paid online when you booked.';
+    'Your deposit was paid online when you booked.' +
+    feeNote;
   const create = await squareFetch({
     path: '/v2/orders',
     method: 'POST',
@@ -234,17 +239,23 @@ export async function createAndPublishBalanceInvoice({
   serviceDate,
   serviceLabel,
   balanceCents,
+  balanceBaseCents,
   appointmentLabel,
+  processingFeeLabel,
   accessToken,
   environment,
   squareVersion,
 }) {
+  const feeNote = processingFeeLabel
+    ? ` Includes ${processingFeeLabel} card processing fee.`
+    : '';
   const lineItemName = `${String(serviceLabel || 'Makeup service').slice(0, 480)} — balance`;
   const lineItemNote =
     `Remaining balance for appointment ${appointmentLabel || serviceDate || 'TBD'}. ` +
-    'Your deposit was paid online when you booked.';
+    'Your deposit was paid online when you booked.' +
+    feeNote;
   const description =
-    'Blendz By Mora — remaining balance for your appointment. Due on your service date.';
+    'Blendz By Mora — remaining balance for your appointment (includes card processing fee where applicable). Due on your service date.';
 
   const create = await squareFetch({
     path: '/v2/invoices',
@@ -306,11 +317,12 @@ export async function createAndPublishBalanceInvoice({
     description: out.description || description,
     saleOrServiceDate: out.sale_or_service_date || serviceDate,
     balanceCents: computedBalance,
+    subtotalCents: balanceBaseCents ?? computedBalance,
+    taxCents:
+      balanceBaseCents != null && computedBalance != null ? computedBalance - balanceBaseCents : 0,
+    totalCents: computedBalance,
     lineItemName,
     lineItemNote,
-    subtotalCents: computedBalance,
-    taxCents: 0,
-    totalCents: computedBalance,
     invoice: out,
   };
 }

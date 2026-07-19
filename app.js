@@ -761,6 +761,30 @@ function formatUsd(cents) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(cents / 100);
 }
 
+function cardProcessingFeePercent() {
+  return Number(CONFIG.SQUARE_CARD_PROCESSING_FEE_PERCENT ?? 3.3);
+}
+
+function cardProcessingFeeFixedCents() {
+  return Number(CONFIG.SQUARE_CARD_PROCESSING_FEE_FIXED_CENTS ?? 30);
+}
+
+function cardProcessingFeeCents(baseCents) {
+  const base = Math.max(0, Math.round(Number(baseCents) || 0));
+  if (base < 1) return 0;
+  return Math.round(base * (cardProcessingFeePercent() / 100)) + cardProcessingFeeFixedCents();
+}
+
+function cardChargeTotalCents(baseCents) {
+  const base = Math.max(0, Math.round(Number(baseCents) || 0));
+  return base + cardProcessingFeeCents(base);
+}
+
+function cardProcessingFeeLabel() {
+  const fixed = cardProcessingFeeFixedCents();
+  return `${cardProcessingFeePercent()}% + ${formatUsd(fixed)}`;
+}
+
 function squareWebSdkUrl() {
   const env = String(CONFIG.SQUARE_ENVIRONMENT || 'production').toLowerCase();
   return env === 'sandbox'
@@ -844,14 +868,19 @@ async function showBookingDepositPayment({ status, bookingId, serviceLabel }) {
   const pct = Number(CONFIG.SQUARE_DEPOSIT_PERCENT || 50);
   if (!totalCents || !bookingId || !bookingDepositConfigured()) return false;
 
-  const depositCents = Math.round((totalCents * pct) / 100);
+  const depositBaseCents = Math.round((totalCents * pct) / 100);
+  const depositFeeCents = cardProcessingFeeCents(depositBaseCents);
+  const depositChargeCents = cardChargeTotalCents(depositBaseCents);
+  const feeLabel = cardProcessingFeeLabel();
   status.className = 'booking-status success';
   status.textContent = '';
   status.style.display = 'block';
 
   const msg = document.createElement('p');
   msg.textContent =
-    'Your appointment details are saved. Pay your deposit below to secure your date. Your confirmation email and text (if you opted in) will be sent after payment.';
+    'Your appointment details are saved. Pay your deposit below to secure your date. Card payments include a processing fee (' +
+    feeLabel +
+    ' per transaction). Your confirmation email and text (if you opted in) will be sent after payment.';
   status.appendChild(msg);
 
   const payBox = document.createElement('div');
@@ -859,7 +888,11 @@ async function showBookingDepositPayment({ status, bookingId, serviceLabel }) {
 
   const amountLine = document.createElement('p');
   amountLine.className = 'booking-deposit-amount';
-  amountLine.innerHTML = `<strong>Deposit due now:</strong> ${formatUsd(depositCents)}`;
+  amountLine.innerHTML =
+    `<span class="booking-deposit-line"><strong>Deposit (50%):</strong> ${formatUsd(depositBaseCents)}</span>` +
+    `<span class="booking-deposit-line booking-deposit-fee">Card processing fee (${feeLabel}): ${formatUsd(depositFeeCents)}</span>` +
+    `<span class="booking-deposit-line"><strong>Total due now:</strong> ${formatUsd(depositChargeCents)}</span>` +
+    `<span class="booking-deposit-note">If you also pay your balance invoice by card, the same processing fee applies to that payment separately.</span>`;
   payBox.appendChild(amountLine);
 
   const cardWrap = document.createElement('div');
@@ -875,7 +908,7 @@ async function showBookingDepositPayment({ status, bookingId, serviceLabel }) {
   const payBtn = document.createElement('button');
   payBtn.type = 'button';
   payBtn.className = 'btn btn-primary booking-deposit-pay-btn';
-  payBtn.textContent = `Pay ${formatUsd(depositCents)} deposit`;
+  payBtn.textContent = `Pay ${formatUsd(depositChargeCents)} deposit`;
   payBox.appendChild(payBtn);
 
   status.appendChild(payBox);
@@ -918,7 +951,7 @@ async function showBookingDepositPayment({ status, bookingId, serviceLabel }) {
       status.textContent = '';
       const done = document.createElement('p');
       let doneText =
-        'Deposit paid — thank you! Your appointment is secured. Square will email you an invoice for the remaining balance due on your service date.';
+        'Deposit paid — thank you! Your appointment is secured. Square will email you an invoice for the remaining balance due on your service date (card payments include a 3.3% + $0.30 processing fee on each transaction).';
       if (data.emailSent) {
         doneText += ' A confirmation has been sent to your email.';
       }
@@ -932,7 +965,7 @@ async function showBookingDepositPayment({ status, bookingId, serviceLabel }) {
       payErr.hidden = false;
       payErr.textContent = err instanceof Error ? err.message : 'Payment failed.';
       payBtn.disabled = false;
-      payBtn.textContent = `Pay ${formatUsd(depositCents)} deposit`;
+      payBtn.textContent = `Pay ${formatUsd(depositChargeCents)} deposit`;
     }
   });
 

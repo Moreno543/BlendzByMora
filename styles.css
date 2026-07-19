@@ -736,6 +736,24 @@ section h2 {
   color: var(--color-deposit);
 }
 
+.booking-deposit-line {
+  display: block;
+  margin-bottom: 0.35rem;
+}
+
+.booking-deposit-fee {
+  color: var(--color-text-muted);
+  font-size: 0.95rem;
+}
+
+.booking-deposit-note {
+  display: block;
+  margin-top: 0.65rem;
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
 .square-card-container {
   min-height: 56px;
   margin-bottom: 1rem;

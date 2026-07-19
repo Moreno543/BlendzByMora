@@ -57,6 +57,9 @@ const CONFIG = {
   SQUARE_LOCATION_ID: 'LZZJN7YKHA3YF',
   SQUARE_ENVIRONMENT: 'production', // production | sandbox
   SQUARE_DEPOSIT_PERCENT: 50,
+  // Card processing fee added to each Square card payment (deposit + balance invoice)
+  SQUARE_CARD_PROCESSING_FEE_PERCENT: 3.3,
+  SQUARE_CARD_PROCESSING_FEE_FIXED_CENTS: 30,
 
   // Google review link - direct link for customers to leave a review
   GOOGLE_REVIEW_URL: 'https://g.page/r/CShCAdf8bWHkEBM/review',

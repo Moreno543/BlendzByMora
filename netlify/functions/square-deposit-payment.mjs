@@ -14,6 +14,11 @@ import {
 } from './lib/square-api.mjs';
 import { notifyBookingConfirmedAfterDeposit } from './lib/booking-notify.mjs';
 import { invoicePayloadFromBooking, saveInvoiceRecord } from './lib/invoice-store.mjs';
+import {
+  cardChargeTotalCents,
+  cardProcessingFeeCents,
+  cardProcessingFeeLabel,
+} from './lib/card-processing-fee.mjs';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -106,9 +111,14 @@ export default async function handler(request) {
   }
 
   const pct = Math.min(99, Math.max(1, depositPercent));
-  const depositCents = Math.round((totalCents * pct) / 100);
-  const balanceCents = totalCents - depositCents;
-  if (depositCents < 1) {
+  const depositBaseCents = Math.round((totalCents * pct) / 100);
+  const balanceBaseCents = totalCents - depositBaseCents;
+  const depositFeeCents = cardProcessingFeeCents(depositBaseCents);
+  const depositChargeCents = cardChargeTotalCents(depositBaseCents);
+  const balanceFeeCents = cardProcessingFeeCents(balanceBaseCents);
+  const balanceChargeCents = cardChargeTotalCents(balanceBaseCents);
+  const feeLabel = cardProcessingFeeLabel();
+  if (depositBaseCents < 1) {
     return new Response(JSON.stringify({ ok: false, error: 'Invalid deposit amount' }), {
       status: 422,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -140,7 +150,7 @@ export default async function handler(request) {
       idempotencySeed: attemptId,
       locationId,
       sourceId,
-      amountCents: depositCents,
+      amountCents: depositChargeCents,
       customerId,
       serviceLabel: row.service,
       accessToken,
@@ -148,13 +158,14 @@ export default async function handler(request) {
     });
 
     let balanceInvoice = null;
-    if (balanceCents > 0) {
+    if (balanceBaseCents > 0) {
       const orderId = await createBalanceOrder({
         bookingId,
         locationId,
         serviceLabel: row.service,
-        balanceCents,
+        balanceCents: balanceChargeCents,
         appointmentDate: appointmentLabel,
+        processingFeeLabel: feeLabel,
         accessToken,
         environment,
       });
@@ -167,8 +178,10 @@ export default async function handler(request) {
         balanceDueDate,
         serviceDate: appointmentDate,
         serviceLabel: row.service,
-        balanceCents,
+        balanceCents: balanceChargeCents,
+        balanceBaseCents,
         appointmentLabel,
+        processingFeeLabel: feeLabel,
         accessToken,
         environment,
       });
@@ -182,14 +195,16 @@ export default async function handler(request) {
         squarePaymentId: payment.id,
         squareCustomerId: customerId,
         status: payment.status || 'COMPLETED',
-        description: `Blendz By Mora deposit — ${String(row.service || 'appointment').slice(0, 400)}`,
+        description:
+          `Blendz By Mora deposit — ${String(row.service || 'appointment').slice(0, 360)} ` +
+          `(includes ${feeLabel} card processing fee)`,
         lineItemName: String(row.service || 'Makeup service').slice(0, 512),
-        subtotalCents: depositCents,
-        taxCents: 0,
-        totalCents: depositCents,
+        subtotalCents: depositBaseCents,
+        taxCents: depositFeeCents,
+        totalCents: depositChargeCents,
         totalServiceCents: totalCents,
-        depositCents,
-        balanceCents: balanceCents > 0 ? balanceCents : null,
+        depositCents: depositBaseCents,
+        balanceCents: balanceBaseCents > 0 ? balanceBaseCents : null,
         dueDate: depositDueDate,
         squareEnvironment: environment || 'production',
       })
@@ -214,12 +229,12 @@ export default async function handler(request) {
           description: balanceInvoice.description,
           lineItemName: balanceInvoice.lineItemName,
           lineItemNote: balanceInvoice.lineItemNote,
-          subtotalCents: balanceInvoice.subtotalCents ?? balanceCents,
-          taxCents: balanceInvoice.taxCents ?? 0,
-          totalCents: balanceInvoice.totalCents ?? balanceCents,
+          subtotalCents: balanceInvoice.subtotalCents ?? balanceBaseCents,
+          taxCents: balanceInvoice.taxCents ?? balanceFeeCents,
+          totalCents: balanceInvoice.totalCents ?? balanceChargeCents,
           totalServiceCents: totalCents,
-          depositCents,
-          balanceCents,
+          depositCents: depositBaseCents,
+          balanceCents: balanceBaseCents,
           dueDate: balanceInvoice.balanceDueDate,
           publicUrl: balanceInvoice.publicUrl,
           squareEnvironment: environment || 'production',
@@ -236,8 +251,12 @@ export default async function handler(request) {
       JSON.stringify({
         ok: true,
         paymentId: payment.id,
-        depositCents,
-        balanceCents,
+        depositBaseCents,
+        depositChargeCents,
+        depositFeeCents,
+        balanceBaseCents,
+        balanceChargeCents,
+        balanceFeeCents,
         balanceInvoiceId: balanceInvoice?.invoiceId || null,
         balanceInvoiceNumber: balanceInvoice?.invoiceNumber || null,
         balanceDueDate: balanceInvoice?.balanceDueDate || balanceDueDate,

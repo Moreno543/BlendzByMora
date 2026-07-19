@@ -44,7 +44,7 @@ export async function sendBookingConfirmationEmail(row, { depositPaid = false } 
     ? `Hello ${firstName},\n\n` +
       'Thank you for booking with Blendz By Mora. Your deposit has been received and your appointment is secured. Below is a copy of your booking for your records.\n\n' +
       `You agreed to our Service Agreement (version ${agreementVersion}). Keep this link for your records:\n${agreementUrl}\n\n` +
-      'The remaining balance will be invoiced for your service date.\n\n' +
+      'The remaining balance will be invoiced for your service date. Card payments include a processing fee of 3.3% + $0.30 per transaction (deposit and balance are separate payments). Cash and Zelle are not subject to card processing fees.\n\n' +
       'Kind regards,\nBlendz By Mora'
     : `Hello ${firstName},\n\n` +
       'Thank you for submitting an appointment request with Blendz By Mora. Below is a copy of the services you requested for your records.\n\n' +
