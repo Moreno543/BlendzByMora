@@ -91,9 +91,10 @@ export default async function handler() {
   });
   const { data: rows, error: qerr } = await supabase
     .from('bookings')
-    .select('id, name, phone, service, date, time, reminder_sent_at')
+    .select('id, name, phone, service, date, time, reminder_sent_at, sms_consent')
     .is('reminder_sent_at', null)
     .not('deposit_paid_at', 'is', null)
+    .eq('sms_consent', true)
     .gte('date', minDate)
     .lte('date', maxDate);
 

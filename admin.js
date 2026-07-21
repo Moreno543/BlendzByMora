@@ -4,6 +4,8 @@
 (function () {
   const STORAGE_KEY = 'bbm_admin_token';
   const fnPath = '/.netlify/functions/admin-bookings';
+  const slotsPath = '/.netlify/functions/admin-reschedule-slots';
+  const reschedulePath = '/.netlify/functions/admin-reschedule';
 
   const loginSection = document.getElementById('admin-login');
   const dashboardSection = document.getElementById('admin-dashboard');
@@ -15,6 +17,8 @@
   const tbody = document.getElementById('admin-tbody');
   const confirmFilterWrap = document.getElementById('admin-confirm-filters');
   const refreshBtn = document.getElementById('admin-refresh');
+  const rescheduleBtn = document.getElementById('admin-reschedule');
+  const selectionHint = document.getElementById('admin-selection-hint');
   const logoutBtn = document.getElementById('admin-logout');
   const loadingEl = document.getElementById('admin-loading');
   const dateFrom = document.getElementById('admin-date-from');
@@ -23,8 +27,18 @@
   const presetDefault = document.getElementById('admin-preset-default');
   const preset14 = document.getElementById('admin-preset-14');
   const preset30 = document.getElementById('admin-preset-30');
+  const rescheduleModal = document.getElementById('admin-reschedule-modal');
+  const rescheduleSummary = document.getElementById('admin-reschedule-summary');
+  const rescheduleDateInput = document.getElementById('admin-reschedule-date');
+  const rescheduleTimeSelect = document.getElementById('admin-reschedule-time');
+  const rescheduleConfirmBtn = document.getElementById('admin-reschedule-confirm');
+  const rescheduleCancelBtn = document.getElementById('admin-reschedule-cancel');
+  const rescheduleErrEl = document.getElementById('admin-reschedule-error');
 
   let confirmFilter = 'all';
+  let selectedBooking = null;
+  let rescheduleFlatpickr = null;
+  let rescheduleDateStr = '';
 
   /** Same order as netlify/functions/admin-bookings.mjs — earliest date/time first. */
   const SLOT_ORDER = ['8:00 AM', '10:00 AM', '12:00 PM', '2:00 PM', '4:00 PM'];
@@ -130,6 +144,206 @@
     });
   }
 
+  function clearSelectedBooking() {
+    selectedBooking = null;
+    tbody.querySelectorAll('.admin-row-selected').forEach((tr) => tr.classList.remove('admin-row-selected'));
+    if (rescheduleBtn) rescheduleBtn.disabled = true;
+    if (selectionHint) {
+      selectionHint.innerHTML =
+        'Click an appointment to select it, then choose <strong>Reschedule</strong>. Only bookings with a paid deposit can be moved.';
+    }
+  }
+
+  function selectBooking(row, tr) {
+    selectedBooking = row;
+    tbody.querySelectorAll('.admin-row-selected').forEach((el) => el.classList.remove('admin-row-selected'));
+    tr.classList.add('admin-row-selected');
+    const canReschedule = Boolean(row.deposit_paid_at);
+    if (rescheduleBtn) rescheduleBtn.disabled = !canReschedule;
+    if (selectionHint) {
+      if (canReschedule) {
+        selectionHint.innerHTML = `Selected: <strong>${escapeHtml(row.name || 'Client')}</strong> — ${escapeHtml(row.date || '')} at ${escapeHtml(row.time || '')}. Click <strong>Reschedule</strong> to pick a new slot.`;
+      } else {
+        selectionHint.innerHTML = `Selected: <strong>${escapeHtml(row.name || 'Client')}</strong> — deposit not paid yet; cannot reschedule from here.`;
+      }
+    }
+  }
+
+  function showRescheduleError(msg) {
+    if (!rescheduleErrEl) return;
+    rescheduleErrEl.textContent = msg || '';
+    rescheduleErrEl.hidden = !msg;
+  }
+
+  function updateRescheduleConfirmState() {
+    if (!rescheduleConfirmBtn) return;
+    const time = (rescheduleTimeSelect?.value || '').trim();
+    rescheduleConfirmBtn.disabled = !rescheduleDateStr || !time;
+  }
+
+  async function loadRescheduleSlots(dateStr) {
+    if (!selectedBooking?.id || !dateStr) {
+      if (rescheduleTimeSelect) {
+        rescheduleTimeSelect.innerHTML = '<option value="">Select a date first</option>';
+      }
+      updateRescheduleConfirmState();
+      return;
+    }
+
+    if (rescheduleTimeSelect) {
+      rescheduleTimeSelect.innerHTML = '<option value="">Loading times…</option>';
+      rescheduleTimeSelect.disabled = true;
+    }
+    updateRescheduleConfirmState();
+
+    try {
+      const res = await fetch(slotsPath, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({ token: getToken(), bookingId: selectedBooking.id, date: dateStr }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.status === 401) {
+        setToken('');
+        loginSection.hidden = false;
+        dashboardSection.hidden = true;
+        closeRescheduleModal();
+        showError('Session expired. Please sign in again.');
+        return;
+      }
+      if (!res.ok) {
+        showRescheduleError(data.error || 'Could not load available times.');
+        if (rescheduleTimeSelect) {
+          rescheduleTimeSelect.innerHTML = '<option value="">Unavailable</option>';
+        }
+        return;
+      }
+
+      const slots = data.slots || [];
+      if (!rescheduleTimeSelect) return;
+      rescheduleTimeSelect.disabled = false;
+      if (!slots.some((s) => s.available)) {
+        rescheduleTimeSelect.innerHTML = '<option value="">No times available — choose another date</option>';
+        updateRescheduleConfirmState();
+        return;
+      }
+
+      rescheduleTimeSelect.innerHTML = '<option value="">Select a time</option>';
+      for (const slot of slots) {
+        const opt = document.createElement('option');
+        opt.value = slot.time;
+        opt.textContent = slot.available ? slot.time : `${slot.time} — Booked`;
+        opt.disabled = !slot.available;
+        rescheduleTimeSelect.appendChild(opt);
+      }
+      updateRescheduleConfirmState();
+    } catch (e) {
+      console.error(e);
+      showRescheduleError('Could not load available times.');
+      if (rescheduleTimeSelect) {
+        rescheduleTimeSelect.innerHTML = '<option value="">Error loading times</option>';
+        rescheduleTimeSelect.disabled = false;
+      }
+    }
+  }
+
+  function initRescheduleFlatpickr() {
+    if (!rescheduleDateInput || rescheduleFlatpickr || typeof flatpickr !== 'function') return;
+    rescheduleFlatpickr = flatpickr(rescheduleDateInput, {
+      dateFormat: 'Y-m-d',
+      minDate: localYmd(new Date()),
+      disableMobile: true,
+      onChange(_dates, dateStr) {
+        rescheduleDateStr = normalizeYmd(dateStr);
+        loadRescheduleSlots(rescheduleDateStr);
+      },
+    });
+  }
+
+  function normalizeYmd(str) {
+    if (!str || typeof str !== 'string') return '';
+    const m = str.trim().match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+    if (!m) return str.trim();
+    return `${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}`;
+  }
+
+  function openRescheduleModal() {
+    if (!selectedBooking?.deposit_paid_at) return;
+    showRescheduleError('');
+    initRescheduleFlatpickr();
+
+    const name = selectedBooking.name || 'Client';
+    const service = selectedBooking.service || '';
+    rescheduleSummary.textContent = `${name} — ${service}. Currently ${selectedBooking.date} at ${selectedBooking.time}. Pick a new open slot below. Deposit stays applied — no new payment.`;
+
+    rescheduleDateStr = '';
+    if (rescheduleFlatpickr) rescheduleFlatpickr.clear();
+    if (rescheduleTimeSelect) {
+      rescheduleTimeSelect.innerHTML = '<option value="">Select a date first</option>';
+      rescheduleTimeSelect.disabled = false;
+    }
+    updateRescheduleConfirmState();
+    if (rescheduleModal) rescheduleModal.hidden = false;
+  }
+
+  function closeRescheduleModal() {
+    showRescheduleError('');
+    if (rescheduleModal) rescheduleModal.hidden = true;
+    if (rescheduleConfirmBtn) {
+      rescheduleConfirmBtn.disabled = true;
+      rescheduleConfirmBtn.textContent = 'Confirm reschedule';
+    }
+  }
+
+  async function confirmReschedule() {
+    if (!selectedBooking?.id) return;
+    const date = rescheduleDateStr;
+    const time = (rescheduleTimeSelect?.value || '').trim();
+    if (!date || !time) return;
+
+    showRescheduleError('');
+    rescheduleConfirmBtn.disabled = true;
+    rescheduleConfirmBtn.textContent = 'Saving…';
+
+    try {
+      const res = await fetch(reschedulePath, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({ token: getToken(), bookingId: selectedBooking.id, date, time }),
+      });
+      const data = await res.json().catch(() => ({}));
+
+      if (res.status === 401) {
+        setToken('');
+        loginSection.hidden = false;
+        dashboardSection.hidden = true;
+        closeRescheduleModal();
+        showError('Session expired. Please sign in again.');
+        return;
+      }
+
+      if (!res.ok) {
+        showRescheduleError(data.error || 'Could not reschedule.');
+        rescheduleConfirmBtn.disabled = false;
+        rescheduleConfirmBtn.textContent = 'Confirm reschedule';
+        return;
+      }
+
+      closeRescheduleModal();
+      clearSelectedBooking();
+      await loadBookings();
+      showError('');
+      if (selectionHint) {
+        selectionHint.innerHTML = `Rescheduled to <strong>${escapeHtml(data.newDate)}</strong> at <strong>${escapeHtml(data.newTime)}</strong>. Confirmation email${data.smsSent ? ' and SMS' : ''} sent.`;
+      }
+    } catch (e) {
+      console.error(e);
+      showRescheduleError('Could not reach the server. Try again.');
+      rescheduleConfirmBtn.disabled = false;
+      rescheduleConfirmBtn.textContent = 'Confirm reschedule';
+    }
+  }
+
   async function loadBookings() {
     const token = getToken();
     if (!token) {
@@ -186,6 +400,7 @@
       }
 
       const rows = sortBookingsLocal(data.bookings || []);
+      clearSelectedBooking();
       if (rows.length === 0) {
         const hint =
           confirmFilter === 'confirmed'
@@ -203,6 +418,8 @@
         const showDate = dateStr !== lastDate;
         lastDate = dateStr;
         const tr = document.createElement('tr');
+        tr.className = 'admin-row-clickable';
+        tr.dataset.bookingId = r.id || '';
         tr.innerHTML = `
           <td data-label="Date" class="admin-nowrap">${cell(showDate ? dateStr : '')}</td>
           <td data-label="Time" class="admin-nowrap">${cell(r.time || '')}</td>
@@ -216,6 +433,7 @@
           <td data-label="SMS opt-in" class="admin-nowrap">${cell(r.sms_consent ? 'Yes' : 'No')}</td>
           <td data-label="SMS YES" class="admin-nowrap">${smsYesCell(r)}</td>
         `;
+        tr.addEventListener('click', () => selectBooking(r, tr));
         tbody.appendChild(tr);
       }
     } catch (e) {
@@ -320,6 +538,24 @@
 
   refreshBtn.addEventListener('click', () => loadBookings());
 
+  if (rescheduleBtn) {
+    rescheduleBtn.addEventListener('click', () => openRescheduleModal());
+  }
+  if (rescheduleCancelBtn) {
+    rescheduleCancelBtn.addEventListener('click', () => closeRescheduleModal());
+  }
+  if (rescheduleModal) {
+    rescheduleModal.addEventListener('click', (e) => {
+      if (e.target === rescheduleModal) closeRescheduleModal();
+    });
+  }
+  if (rescheduleTimeSelect) {
+    rescheduleTimeSelect.addEventListener('change', () => updateRescheduleConfirmState());
+  }
+  if (rescheduleConfirmBtn) {
+    rescheduleConfirmBtn.addEventListener('click', () => confirmReschedule());
+  }
+
   if (confirmFilterWrap) {
     confirmFilterWrap.addEventListener('click', (e) => {
       const btn = e.target.closest('[data-confirm-filter]');
@@ -334,6 +570,7 @@
 
   logoutBtn.addEventListener('click', () => {
     setToken('');
+    closeRescheduleModal();
     loginSection.hidden = false;
     dashboardSection.hidden = true;
     tbody.innerHTML = '';
@@ -341,6 +578,7 @@
     syncConfirmFilterButtons();
     dateFrom.value = '';
     dateTo.value = '';
+    clearSelectedBooking();
     showError('');
   });
 

@@ -15,6 +15,9 @@ This page is **not** linked anywhere on the public site. Bookmark:
 
 1. **`admin.html`** — login form (token only; no password in Git).
 2. **`netlify/functions/admin-bookings.mjs`** — server-side function uses **`SUPABASE_SERVICE_ROLE_KEY`** to read **`bookings`** for the requested range (max **120** days), including **`sms_confirmed_at`** (set when the client texts **YES**). Use **SMS confirmation** filters: **All**, **SMS confirmed**, or **Not confirmed**. Your **anon** key stays in `config.js` for the public booking form only.
+3. **`admin.html` + `admin.js`** — click an appointment row, then **Reschedule** (between Refresh and Sign out). Pick a new open date/time. Only bookings with **`deposit_paid_at`** set can be moved (deposit already paid — no new checkout). Sends Formspree confirmation email (owner + customer CC) and Twilio SMS if the client opted in. Resets **`reminder_sent_at`** so the ~72h reminder uses the new date.
+4. **`netlify/functions/admin-reschedule-slots.mjs`** — available slots for a date (excludes the booking being moved).
+5. **`netlify/functions/admin-reschedule.mjs`** — updates date/time and sends notifications.
 
 **API (POST JSON):**
 
