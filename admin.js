@@ -147,16 +147,23 @@
   function clearSelectedBooking() {
     selectedBooking = null;
     tbody.querySelectorAll('.admin-row-selected').forEach((tr) => tr.classList.remove('admin-row-selected'));
+    tbody.querySelectorAll('.admin-select-cb').forEach((cb) => {
+      cb.checked = false;
+    });
     if (rescheduleBtn) rescheduleBtn.disabled = true;
     if (selectionHint) {
       selectionHint.innerHTML =
-        'Click an appointment to select it, then choose <strong>Reschedule</strong>. Only bookings with a paid deposit can be moved.';
+        'Check one appointment below, then click <strong>Reschedule</strong>. Only bookings with a paid deposit can be moved.';
     }
   }
 
-  function selectBooking(row, tr) {
+  function selectBooking(row, tr, checkbox) {
     selectedBooking = row;
     tbody.querySelectorAll('.admin-row-selected').forEach((el) => el.classList.remove('admin-row-selected'));
+    tbody.querySelectorAll('.admin-select-cb').forEach((cb) => {
+      if (cb !== checkbox) cb.checked = false;
+    });
+    if (checkbox) checkbox.checked = true;
     tr.classList.add('admin-row-selected');
     const canReschedule = Boolean(row.deposit_paid_at);
     if (rescheduleBtn) rescheduleBtn.disabled = !canReschedule;
@@ -248,11 +255,21 @@
   }
 
   function initRescheduleFlatpickr() {
-    if (!rescheduleDateInput || rescheduleFlatpickr || typeof flatpickr !== 'function') return;
+    if (!rescheduleDateInput || typeof flatpickr !== 'function') return;
+    if (rescheduleFlatpickr) {
+      try {
+        rescheduleFlatpickr.destroy();
+      } catch (_) {
+        /* ignore */
+      }
+      rescheduleFlatpickr = null;
+    }
     rescheduleFlatpickr = flatpickr(rescheduleDateInput, {
+      inline: true,
       dateFormat: 'Y-m-d',
       minDate: localYmd(new Date()),
       disableMobile: true,
+      monthSelectorType: 'dropdown',
       onChange(_dates, dateStr) {
         rescheduleDateStr = normalizeYmd(dateStr);
         loadRescheduleSlots(rescheduleDateStr);
@@ -277,7 +294,7 @@
     rescheduleSummary.textContent = `${name} — ${service}. Currently ${selectedBooking.date} at ${selectedBooking.time}. Pick a new open slot below. Deposit stays applied — no new payment.`;
 
     rescheduleDateStr = '';
-    if (rescheduleFlatpickr) rescheduleFlatpickr.clear();
+    initRescheduleFlatpickr();
     if (rescheduleTimeSelect) {
       rescheduleTimeSelect.innerHTML = '<option value="">Select a date first</option>';
       rescheduleTimeSelect.disabled = false;
@@ -289,6 +306,15 @@
   function closeRescheduleModal() {
     showRescheduleError('');
     if (rescheduleModal) rescheduleModal.hidden = true;
+    if (rescheduleFlatpickr) {
+      try {
+        rescheduleFlatpickr.destroy();
+      } catch (_) {
+        /* ignore */
+      }
+      rescheduleFlatpickr = null;
+    }
+    rescheduleDateStr = '';
     if (rescheduleConfirmBtn) {
       rescheduleConfirmBtn.disabled = true;
       rescheduleConfirmBtn.textContent = 'Confirm reschedule';
@@ -345,6 +371,7 @@
   }
 
   async function loadBookings() {
+    closeRescheduleModal();
     const token = getToken();
     if (!token) {
       loginSection.hidden = false;
@@ -408,7 +435,7 @@
             : confirmFilter === 'unconfirmed'
               ? ' Every appointment in this range is SMS-confirmed, or there are none.'
               : '';
-        tbody.innerHTML = `<tr><td colspan="11" class="admin-empty" data-label="">No appointments in this date range.${escapeHtml(hint)}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="12" class="admin-empty" data-label="">No appointments in this date range.${escapeHtml(hint)}</td></tr>`;
         return;
       }
 
@@ -418,9 +445,12 @@
         const showDate = dateStr !== lastDate;
         lastDate = dateStr;
         const tr = document.createElement('tr');
-        tr.className = 'admin-row-clickable';
         tr.dataset.bookingId = r.id || '';
+        const canSelect = Boolean(r.deposit_paid_at);
         tr.innerHTML = `
+          <td data-label="Select" class="admin-select-cell">
+            <input type="checkbox" class="admin-select-cb" aria-label="Select ${escapeAttr(r.name || 'appointment')}"${canSelect ? '' : ' disabled title="Deposit not paid"'}>
+          </td>
           <td data-label="Date" class="admin-nowrap">${cell(showDate ? dateStr : '')}</td>
           <td data-label="Time" class="admin-nowrap">${cell(r.time || '')}</td>
           <td data-label="Service">${cell(r.service || '')}</td>
@@ -433,7 +463,16 @@
           <td data-label="SMS opt-in" class="admin-nowrap">${cell(r.sms_consent ? 'Yes' : 'No')}</td>
           <td data-label="SMS YES" class="admin-nowrap">${smsYesCell(r)}</td>
         `;
-        tr.addEventListener('click', () => selectBooking(r, tr));
+        const checkbox = tr.querySelector('.admin-select-cb');
+        if (checkbox) {
+          checkbox.addEventListener('change', () => {
+            if (checkbox.checked) {
+              selectBooking(r, tr, checkbox);
+            } else {
+              clearSelectedBooking();
+            }
+          });
+        }
         tbody.appendChild(tr);
       }
     } catch (e) {
@@ -585,6 +624,9 @@
   if (getToken()) {
     loginSection.hidden = true;
     dashboardSection.hidden = false;
+    closeRescheduleModal();
     loadBookings();
+  } else {
+    closeRescheduleModal();
   }
 })();
