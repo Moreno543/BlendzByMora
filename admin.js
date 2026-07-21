@@ -285,7 +285,7 @@
   }
 
   function openRescheduleModal() {
-    if (!selectedBooking?.deposit_paid_at) return;
+    if (dashboardSection.hidden || !selectedBooking?.deposit_paid_at) return;
     showRescheduleError('');
     initRescheduleFlatpickr();
 
@@ -620,6 +620,8 @@
     clearSelectedBooking();
     showError('');
   });
+
+  if (rescheduleModal) rescheduleModal.hidden = true;
 
   if (getToken()) {
     loginSection.hidden = true;

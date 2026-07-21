@@ -149,10 +149,13 @@
       inset: 0;
       z-index: 200;
       background: rgba(0, 0, 0, 0.72);
+      padding: 1.25rem;
+      display: none;
+    }
+    .admin-modal-overlay:not([hidden]) {
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 1.25rem;
     }
     .admin-modal {
       width: 100%;
@@ -334,6 +337,6 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
-  <script src="admin.js?v=13"></script>
+  <script src="admin.js?v=14"></script>
 </body>
 </html>
