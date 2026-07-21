@@ -25,13 +25,13 @@ function buildRescheduleEmailCopy(row, { oldDate, oldTime, newDate, newTime }) {
 
   return (
     `Hello ${first},\n\n` +
-    'Your appointment with Blendz By Mora has been rescheduled.\n\n' +
+    'Your appointment with Blendz By Mora has a new date and time.\n\n' +
     `Previous: ${oldDate} at ${oldTime}\n` +
-    `New appointment: ${newDate} at ${newTime}\n` +
+    `Updated appointment: ${newDate} at ${newTime}\n` +
     `Service: ${service}\n\n` +
     'Your deposit remains applied — no additional deposit is required.\n\n' +
     'The balance may be paid before or on the day of service. We accept credit and debit cards, cash, and Zelle.\n\n' +
-    'If you have any questions, reply to this email or contact us at BlendzByMora@gmail.com.\n\n' +
+    'If you have any questions, reply to this email.\n\n' +
     'Kind regards,\nBlendz By Mora'
   );
 }
@@ -47,7 +47,8 @@ export function buildRescheduleSmsBody(row, { newDate, newTime }) {
 }
 
 export async function sendRescheduleNotifications(row, { oldDate, oldTime, newDate, newTime }) {
-  const formspreeId = env('FORMSPREE_BOOKING_ID');
+  const formspreeId =
+    env('FORMSPREE_RESCHEDULE_ID') || env('FORMSPREE_REFUND_ID') || env('FORMSPREE_BOOKING_ID');
   const customerEmail = String(row.email || '').trim();
   const ownerFallback = env('FORMSPREE_OWNER_EMAIL') || 'BlendzByMora@gmail.com';
   const confirmationCopy = buildRescheduleEmailCopy(row, { oldDate, oldTime, newDate, newTime });
@@ -55,10 +56,9 @@ export async function sendRescheduleNotifications(row, { oldDate, oldTime, newDa
   let emailSent = false;
   if (formspreeId) {
     const fields = {
-      event: 'appointment_rescheduled',
       'Appointment confirmation': confirmationCopy,
       email: customerEmail || ownerFallback,
-      _subject: `Blendz By Mora — appointment rescheduled (${newDate} · ${newTime})`,
+      _subject: `Blendz By Mora — appointment update (${newDate} · ${newTime})`,
       _replyto: customerEmail || ownerFallback,
     };
     if (customerEmail) fields._cc = customerEmail;

@@ -9,6 +9,7 @@ import {
   isValidSlotTime,
   isValidYmd,
 } from './lib/booking-slots.mjs';
+import { isDateBlackedOut } from './lib/blackout-dates.mjs';
 import { sendRescheduleNotifications } from './lib/reschedule-notify.mjs';
 
 function normalizeDateField(value) {
@@ -49,6 +50,13 @@ export default async function handler(request) {
   if (!bookingId || !isValidYmd(newDate) || !isValidSlotTime(newTime)) {
     return new Response(JSON.stringify({ error: 'bookingId, date (YYYY-MM-DD), and a valid time slot are required.' }), {
       status: 400,
+      headers: { ...adminCorsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+
+  if (isDateBlackedOut(newDate)) {
+    return new Response(JSON.stringify({ error: 'That date is not available for appointments.' }), {
+      status: 422,
       headers: { ...adminCorsHeaders, 'Content-Type': 'application/json' },
     });
   }

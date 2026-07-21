@@ -154,13 +154,13 @@ What customers see on their card activity (e.g. **BlendzByMora Service**) comes 
 | No alert when client pays balance invoice | Add **`invoice.payment_made`** to Square webhook events. Redeploy. Set **`TWILIO_OWNER_NOTIFY_PHONE`** for SMS. |
 | Amex still says “SERVICE TRANSACTION” | **Pending** charges use a generic label until they post (1–3 days). Set Square **Business name** to BlendzByMora; only **new** payments use the updated descriptor. |
 
-### Refund emails in Formspree spam
+### Refund & reschedule emails in Formspree spam
 
-Square webhooks can succeed (**200**) while Formspree **Formshield** still hides the notification in **Submissions → Spam** (no Gmail delivery).
+Square webhooks and admin reschedule can succeed while Formspree **Formshield** still hides the notification in **Submissions → Spam** (no Gmail delivery).
 
-1. Open your form at [formspree.io](https://formspree.io) → **Submissions** → **Spam** → select a refund → **Not spam** (trains the filter).
+1. Open your form at [formspree.io](https://formspree.io) → **Submissions** → **Spam** → select the message → **Not spam** (trains the filter).
 2. **Settings** → **Formshield** → set **Relaxed**, or on paid plans turn off **Fraud related** / **Spammy phrases** classifiers.
-3. **Optional (best for refunds):** Create a second Formspree form (e.g. “Blendz Refunds”) with **Formshield disabled**, copy its form ID to Netlify as **`FORMSPREE_REFUND_ID`**. Refund emails use that form; booking stays on **`FORMSPREE_BOOKING_ID`**.
+3. **Optional (best for transactional mail):** Create a second Formspree form (e.g. “Blendz Refunds”) with **Formshield disabled**, copy its form ID to Netlify as **`FORMSPREE_REFUND_ID`**. Refund and reschedule emails use that form (or set **`FORMSPREE_RESCHEDULE_ID`** separately); booking stays on **`FORMSPREE_BOOKING_ID`**.
 
 ---
 

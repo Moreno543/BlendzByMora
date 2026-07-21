@@ -9,6 +9,7 @@ import {
   isValidYmd,
   slotsWithAvailability,
 } from './lib/booking-slots.mjs';
+import { isDateBlackedOut } from './lib/blackout-dates.mjs';
 
 export default async function handler(request) {
   if (request.method === 'OPTIONS') {
@@ -44,6 +45,20 @@ export default async function handler(request) {
       status: 400,
       headers: { ...adminCorsHeaders, 'Content-Type': 'application/json' },
     });
+  }
+
+  if (isDateBlackedOut(date)) {
+    return new Response(
+      JSON.stringify({
+        ok: true,
+        date,
+        bookingId,
+        slots: [],
+        hasAvailable: false,
+        blackedOut: true,
+      }),
+      { status: 200, headers: { ...adminCorsHeaders, 'Content-Type': 'application/json' } }
+    );
   }
 
   const url = process.env.SUPABASE_URL;

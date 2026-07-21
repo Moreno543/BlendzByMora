@@ -210,6 +210,13 @@
     .admin-reschedule-calendar-wrap .flatpickr-input {
       display: none;
     }
+    .admin-reschedule-calendar-wrap .flatpickr-day.flatpickr-disabled,
+    .admin-reschedule-calendar-wrap .flatpickr-day.flatpickr-disabled:hover {
+      color: rgba(255, 255, 255, 0.2) !important;
+      background: rgba(0, 0, 0, 0.28) !important;
+      cursor: not-allowed !important;
+      opacity: 0.55;
+    }
     .admin-modal-actions {
       display: flex;
       flex-wrap: wrap;
@@ -337,6 +344,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
-  <script src="admin.js?v=14"></script>
+  <script src="config.js?v=1"></script>
+  <script src="admin.js?v=16"></script>
 </body>
 </html>

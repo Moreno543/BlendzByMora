@@ -229,6 +229,11 @@
       const slots = data.slots || [];
       if (!rescheduleTimeSelect) return;
       rescheduleTimeSelect.disabled = false;
+      if (data.blackedOut) {
+        rescheduleTimeSelect.innerHTML = '<option value="">Date unavailable — choose another day</option>';
+        updateRescheduleConfirmState();
+        return;
+      }
       if (!slots.some((s) => s.available)) {
         rescheduleTimeSelect.innerHTML = '<option value="">No times available — choose another date</option>';
         updateRescheduleConfirmState();
@@ -254,6 +259,51 @@
     }
   }
 
+  /** Keep in sync with config.js — used if CONFIG fails to load on admin page. */
+  const ADMIN_BLACKOUT_FALLBACK = {
+    BLACKOUT_RANGE: {
+      start: '2026-05-04',
+      end: '2026-10-28',
+      blockWeekdays: [1, 2, 3, 4],
+    },
+    BLACKOUT_DATES: [
+      '2026-04-06', '2026-04-07', '2026-04-08', '2026-04-09', '2026-04-10',
+      '2026-01-01', '2026-01-19', '2026-02-16', '2026-05-25', '2026-06-19',
+      '2026-07-04', '2026-09-07', '2026-10-12', '2026-11-11', '2026-11-26', '2026-12-25',
+    ],
+  };
+
+  function getBlackoutConfig() {
+    if (typeof CONFIG !== 'undefined' && CONFIG) {
+      return {
+        BLACKOUT_RANGE: CONFIG.BLACKOUT_RANGE || ADMIN_BLACKOUT_FALLBACK.BLACKOUT_RANGE,
+        BLACKOUT_DATES: CONFIG.BLACKOUT_DATES || ADMIN_BLACKOUT_FALLBACK.BLACKOUT_DATES,
+      };
+    }
+    return ADMIN_BLACKOUT_FALLBACK;
+  }
+
+  function flatpickrCellDateStr(date) {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+
+  function isRescheduleDateBlackedOut(dateStr, dateObj) {
+    const cfg = getBlackoutConfig();
+    const blackoutSet = new Set(cfg.BLACKOUT_DATES || []);
+    if (blackoutSet.has(dateStr)) return true;
+    const range = cfg.BLACKOUT_RANGE;
+    const blockWeekdays = new Set(range?.blockWeekdays || []);
+    if (range?.start && range?.end && blockWeekdays.size) {
+      if (dateStr >= range.start && dateStr <= range.end && blockWeekdays.has(dateObj.getDay())) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   function initRescheduleFlatpickr() {
     if (!rescheduleDateInput || typeof flatpickr !== 'function') return;
     if (rescheduleFlatpickr) {
@@ -264,12 +314,20 @@
       }
       rescheduleFlatpickr = null;
     }
+    const todayStr = localYmd(new Date());
     rescheduleFlatpickr = flatpickr(rescheduleDateInput, {
       inline: true,
       dateFormat: 'Y-m-d',
-      minDate: localYmd(new Date()),
+      minDate: todayStr,
       disableMobile: true,
       monthSelectorType: 'dropdown',
+      disable: [
+        function (date) {
+          const dateStr = flatpickrCellDateStr(date);
+          if (dateStr < todayStr) return true;
+          return isRescheduleDateBlackedOut(dateStr, date);
+        },
+      ],
       onChange(_dates, dateStr) {
         rescheduleDateStr = normalizeYmd(dateStr);
         loadRescheduleSlots(rescheduleDateStr);
@@ -287,7 +345,6 @@
   function openRescheduleModal() {
     if (dashboardSection.hidden || !selectedBooking?.deposit_paid_at) return;
     showRescheduleError('');
-    initRescheduleFlatpickr();
 
     const name = selectedBooking.name || 'Client';
     const service = selectedBooking.service || '';
