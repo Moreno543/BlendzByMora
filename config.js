@@ -61,6 +61,9 @@ const CONFIG = {
   SQUARE_CARD_PROCESSING_FEE_PERCENT: 3.3,
   SQUARE_CARD_PROCESSING_FEE_FIXED_CENTS: 30,
 
+  // Google Analytics 4 — daily traffic at https://analytics.google.com (see SETUP_ANALYTICS.md)
+  GA_MEASUREMENT_ID: 'G-N097R4VE0G',
+
   // Google review link - direct link for customers to leave a review
   GOOGLE_REVIEW_URL: 'https://g.page/r/CShCAdf8bWHkEBM/review',
   // Or use Place ID for direct writereview link: https://developers.google.com/maps/documentation/places/web-service/place-id
