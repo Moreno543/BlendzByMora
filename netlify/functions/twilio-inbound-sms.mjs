@@ -7,7 +7,7 @@
  *
  * Env: TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_MESSAGING_SERVICE_SID and/or TWILIO_FROM_NUMBER,
  *      SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY,
- *      optional TWILIO_OWNER_NOTIFY_PHONE (E.164, e.g. +17253527193),
+ *      optional TWILIO_OWNER_NOTIFY_PHONE (E.164, e.g. +19092103239),
  *      optional FORMSPREE_BOOKING_ID (email to your Formspree inbox)
  */
 import { createHmac, timingSafeEqual } from 'node:crypto';

@@ -1,6 +1,6 @@
 /**
  * Notify business owner when a client confirms via SMS (YES).
- * SMS: TWILIO_OWNER_NOTIFY_PHONE (E.164, e.g. +17253527193)
+ * SMS: TWILIO_OWNER_NOTIFY_PHONE (E.164, e.g. +19092103239)
  * Email: FORMSPREE_BOOKING_ID → delivers to the Formspree form inbox (BlendzByMora@gmail.com)
  */
 import { hasOutboundSender, twilioMessageParams } from './twilio-send.mjs';
