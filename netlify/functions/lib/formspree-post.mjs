@@ -4,8 +4,13 @@
 
 const SITE_ORIGIN = 'https://blendzbymora.com';
 
-export async function postFormspreeJson(formspreeId, fields) {
+export async function postFormspreeJson(formspreeId, fields, options = {}) {
   if (!formspreeId) return { ok: false, skipped: true, reason: 'missing_form_id' };
+
+  const refererPath =
+    typeof options.refererPath === 'string' && options.refererPath.startsWith('/')
+      ? options.refererPath
+      : '/book.html';
 
   const body = {
     _gotcha: '',
@@ -18,7 +23,7 @@ export async function postFormspreeJson(formspreeId, fields) {
       Accept: 'application/json',
       'Content-Type': 'application/json',
       Origin: SITE_ORIGIN,
-      Referer: `${SITE_ORIGIN}/book.html`,
+      Referer: `${SITE_ORIGIN}${refererPath}`,
     },
     body: JSON.stringify(body),
   });

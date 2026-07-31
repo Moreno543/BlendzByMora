@@ -156,11 +156,26 @@ What customers see on their card activity (e.g. **BlendzByMora Service**) comes 
 
 ### Refund & reschedule emails in Formspree spam
 
-Square webhooks and admin reschedule can succeed while Formspree **Formshield** still hides the notification in **Submissions → Spam** (no Gmail delivery).
+Square webhooks can succeed (**200**) while Formspree **Formshield** still hides the notification in **Submissions → Spam** (no Gmail delivery). Refunds are flagged most often on the **main booking form**.
 
-1. Open your form at [formspree.io](https://formspree.io) → **Submissions** → **Spam** → select the message → **Not spam** (trains the filter).
-2. **Settings** → **Formshield** → set **Relaxed**, or on paid plans turn off **Fraud related** / **Spammy phrases** classifiers.
-3. **Optional (best for transactional mail):** Create a second Formspree form (e.g. “Blendz Refunds”) with **Formshield disabled**, copy its form ID to Netlify as **`FORMSPREE_REFUND_ID`**. Refund and reschedule emails use that form (or set **`FORMSPREE_RESCHEDULE_ID`** separately); booking stays on **`FORMSPREE_BOOKING_ID`**.
+**Check:** open `https://blendzbymora.com/.netlify/functions/square-webhook-status` — if `"hasFormspreeRefundForm": false`, refunds still use the booking form and will keep hitting spam until you add **`FORMSPREE_REFUND_ID`**.
+
+#### Fix (recommended — ~5 minutes)
+
+1. [formspree.io](https://formspree.io) → **+ New form** → name it **Blendz Refunds** (or similar).
+2. Set notifications to **BlendzByMora@gmail.com** (same as booking).
+3. **Settings** → **Formshield** → **Off** (or **Relaxed** on free tier if Off isn’t available).
+4. Copy the form ID from the form URL (`formspree.io/f/xxxxxx` → `xxxxxx`).
+5. Netlify → **Site configuration** → **Environment variables** → add **`FORMSPREE_REFUND_ID`** = that ID (Production).
+6. **Deploy site** (or push any commit).
+7. Process a test refund — submission should land in **Inbox**, not **Spam**.
+
+#### If a message is already in Spam
+
+1. **Submissions** → **Spam** → open the message → **Not spam**.
+2. On the **booking** form (optional): **Settings** → **Formshield** → **Relaxed**.
+
+Refund and reschedule emails prefer **`FORMSPREE_REFUND_ID`**. Reschedule can also use **`FORMSPREE_RESCHEDULE_ID`**; booking stays on **`FORMSPREE_BOOKING_ID`**.
 
 ---
 
