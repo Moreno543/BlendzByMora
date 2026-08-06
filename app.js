@@ -1169,6 +1169,8 @@ async function mountSquareDepositForm(containerEl) {
   for (const style of styleAttempts) {
     try {
       bbmSquareCard = style ? await payments.card({ style }) : await payments.card();
+      containerEl.style.width = '100%';
+      containerEl.style.maxWidth = '100%';
       await bbmSquareCard.attach(containerEl);
       return;
     } catch (err) {
