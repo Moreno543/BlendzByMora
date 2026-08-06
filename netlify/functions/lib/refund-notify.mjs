@@ -93,7 +93,7 @@ export async function sendRefundNotificationEmails(details) {
 
   const customerCopy = buildCustomerRefundCopy(details, amountLabel);
 
-  // One neutral field — avoids Formshield "refund" / extra metadata triggers.
+  // _cc delivers a copy to the customer (Formspree does not reliably send with _bcc).
   const fields = {
     Message: customerCopy,
     email: customerEmail || ownerFallback,
@@ -101,7 +101,7 @@ export async function sendRefundNotificationEmails(details) {
     _replyto: ownerFallback,
   };
 
-  if (customerEmail) fields._bcc = customerEmail;
+  if (customerEmail) fields._cc = customerEmail;
 
   const email = await postFormspreeJson(formspreeId, fields, { refererPath: '/book.html' });
 
@@ -134,7 +134,7 @@ export async function sendRefundNotificationEmails(details) {
   return {
     ok: email.ok || smsSent,
     sent: email.sent === true,
-    customerBcc: Boolean(customerEmail),
+    customerCc: Boolean(customerEmail),
     smsSent,
     usedDedicatedForm: Boolean(dedicatedForm),
   };
