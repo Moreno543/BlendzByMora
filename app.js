@@ -890,7 +890,12 @@ async function mountSquareWalletButtons({
 
   try {
     const googlePay = await payments.googlePay(paymentRequest);
-    await googlePay.attach(googlePayContainer);
+    await googlePay.attach(googlePayContainer, {
+      buttonColor: 'black',
+      buttonType: 'long',
+      buttonSizeMode: 'fill',
+      buttonRadius: 6,
+    });
     bbmSquareGooglePay = googlePay;
     walletAvailable = true;
   } catch (err) {
