@@ -855,10 +855,20 @@ function buildDepositPaymentRequest(payments, { depositBaseCents, depositFeeCent
   });
 }
 
+function isApplePayBrowserSupported() {
+  if (typeof window.ApplePaySession === 'undefined') return false;
+  try {
+    return window.ApplePaySession.canMakePayments();
+  } catch {
+    return false;
+  }
+}
+
 async function mountSquareWalletButtons({
   payments,
   googlePayContainer,
   applePayButton,
+  applePayHint,
   walletWrap,
   depositBaseCents,
   depositFeeCents,
@@ -889,13 +899,19 @@ async function mountSquareWalletButtons({
   }
 
   try {
-    const applePay = await payments.applePay(paymentRequest);
-    bbmSquareApplePay = applePay;
-    applePayButton.hidden = false;
-    walletAvailable = true;
+    if (isApplePayBrowserSupported()) {
+      const applePay = await payments.applePay(paymentRequest);
+      bbmSquareApplePay = applePay;
+      applePayButton.hidden = false;
+      walletAvailable = true;
+    }
   } catch (err) {
     console.warn('[Blendz] Apple Pay unavailable', err);
     applePayButton.hidden = true;
+  }
+
+  if (applePayHint) {
+    applePayHint.hidden = !walletAvailable || !applePayButton.hidden;
   }
 
   walletWrap.hidden = !walletAvailable;
@@ -1238,6 +1254,13 @@ async function showBookingDepositPayment({
   applePayButton.hidden = true;
   walletWrap.appendChild(applePayButton);
 
+  const applePayHint = document.createElement('p');
+  applePayHint.className = 'booking-wallet-apple-hint';
+  applePayHint.hidden = true;
+  applePayHint.textContent =
+    'Apple Pay appears in Safari on iPhone or Mac when Apple Pay is set up on your device.';
+  walletWrap.appendChild(applePayHint);
+
   const walletDivider = document.createElement('p');
   walletDivider.className = 'booking-wallet-divider';
   walletDivider.textContent = 'or pay with card';
@@ -1309,6 +1332,7 @@ async function showBookingDepositPayment({
         payments,
         googlePayContainer,
         applePayButton,
+        applePayHint,
         walletWrap,
         depositBaseCents,
         depositFeeCents,

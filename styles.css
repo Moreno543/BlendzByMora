@@ -914,6 +914,13 @@ section h2 {
   text-transform: uppercase;
 }
 
+.booking-wallet-apple-hint {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
 .booking-deposit-pay-btn {
   width: 100%;
   margin-top: 0.25rem;
