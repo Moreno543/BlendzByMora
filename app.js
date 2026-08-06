@@ -857,6 +857,9 @@ function buildDepositPaymentRequest(payments, { depositBaseCents, depositFeeCent
 
 function isApplePayBrowserSupported() {
   if (typeof window.ApplePaySession === 'undefined') return false;
+  const ua = navigator.userAgent;
+  const isSafari = /Safari/i.test(ua) && !/Chrome|CriOS|Chromium|Edg|OPR|Firefox|FxiOS/i.test(ua);
+  if (!isSafari) return false;
   try {
     return window.ApplePaySession.canMakePayments();
   } catch {
@@ -879,6 +882,7 @@ async function mountSquareWalletButtons({
   googlePayContainer.innerHTML = '';
   googlePayContainer.hidden = false;
   applePayButton.hidden = true;
+  applePayButton.style.display = 'none';
   let walletAvailable = false;
 
   const paymentRequest = buildDepositPaymentRequest(payments, {
@@ -908,11 +912,13 @@ async function mountSquareWalletButtons({
       const applePay = await payments.applePay(paymentRequest);
       bbmSquareApplePay = applePay;
       applePayButton.hidden = false;
+      applePayButton.style.display = 'block';
       walletAvailable = true;
     }
   } catch (err) {
     console.warn('[Blendz] Apple Pay unavailable', err);
     applePayButton.hidden = true;
+    applePayButton.style.display = 'none';
   }
 
   if (applePayHint) {

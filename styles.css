@@ -903,7 +903,7 @@ section h2 {
 }
 
 .booking-apple-pay-button {
-  display: block;
+  display: none;
   width: 100%;
   max-width: 100%;
   min-height: 48px;
@@ -916,6 +916,10 @@ section h2 {
   appearance: -apple-pay-button;
   -apple-pay-button-type: plain;
   -apple-pay-button-style: white;
+}
+
+.booking-apple-pay-button:not([hidden]) {
+  display: block;
 }
 
 .booking-wallet-divider {
