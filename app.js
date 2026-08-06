@@ -811,8 +811,118 @@ let bbmSquareCard = null;
 let bbmSquarePayments = null;
 let bbmSquareAch = null;
 let bbmAchTransactionId = null;
+let bbmSquareGooglePay = null;
+let bbmSquareApplePay = null;
 
 const BBM_PENDING_DEPOSIT_KEY = 'bbm_pending_deposit';
+
+function centsToSquareAmount(cents) {
+  return (Number(cents) / 100).toFixed(2);
+}
+
+async function destroySquareWallets() {
+  if (bbmSquareGooglePay) {
+    try {
+      await bbmSquareGooglePay.destroy();
+    } catch (_) {
+      /* ignore */
+    }
+    bbmSquareGooglePay = null;
+  }
+  if (bbmSquareApplePay) {
+    try {
+      await bbmSquareApplePay.destroy();
+    } catch (_) {
+      /* ignore */
+    }
+    bbmSquareApplePay = null;
+  }
+}
+
+function buildDepositPaymentRequest(payments, { depositBaseCents, depositFeeCents, depositCardChargeCents, pct }) {
+  const lineItems = [{ amount: centsToSquareAmount(depositBaseCents), label: `Deposit (${pct}%)` }];
+  if (depositFeeCents > 0) {
+    lineItems.push({ amount: centsToSquareAmount(depositFeeCents), label: 'Processing fee' });
+  }
+  return payments.paymentRequest({
+    countryCode: 'US',
+    currencyCode: 'USD',
+    total: {
+      amount: centsToSquareAmount(depositCardChargeCents),
+      label: 'Deposit total',
+    },
+    lineItems,
+  });
+}
+
+async function mountSquareWalletButtons({
+  payments,
+  googlePayContainer,
+  applePayButton,
+  walletWrap,
+  depositBaseCents,
+  depositFeeCents,
+  depositCardChargeCents,
+  pct,
+}) {
+  await destroySquareWallets();
+  googlePayContainer.innerHTML = '';
+  googlePayContainer.hidden = false;
+  applePayButton.hidden = true;
+  let walletAvailable = false;
+
+  const paymentRequest = buildDepositPaymentRequest(payments, {
+    depositBaseCents,
+    depositFeeCents,
+    depositCardChargeCents,
+    pct,
+  });
+
+  try {
+    const googlePay = await payments.googlePay(paymentRequest);
+    await googlePay.attach(googlePayContainer);
+    bbmSquareGooglePay = googlePay;
+    walletAvailable = true;
+  } catch (err) {
+    console.warn('[Blendz] Google Pay unavailable', err);
+    googlePayContainer.hidden = true;
+  }
+
+  try {
+    const applePay = await payments.applePay(paymentRequest);
+    bbmSquareApplePay = applePay;
+    applePayButton.hidden = false;
+    walletAvailable = true;
+  } catch (err) {
+    console.warn('[Blendz] Apple Pay unavailable', err);
+    applePayButton.hidden = true;
+  }
+
+  walletWrap.hidden = !walletAvailable;
+  return walletAvailable;
+}
+
+function appendDepositSuccess(status, payBox, data) {
+  status.textContent = '';
+  const done = document.createElement('p');
+  let doneText = renderDepositSuccessMessage(data);
+  if (data.emailSent) doneText += ' A confirmation has been sent to your email.';
+  if (data.smsSent) doneText += ' You will also receive a confirmation text.';
+  done.className = 'booking-deposit-done';
+  done.textContent = doneText;
+  status.appendChild(done);
+  payBox.remove();
+}
+
+async function tokenizeSquareWallet(wallet) {
+  const tokenResult = await wallet.tokenize();
+  if (tokenResult.status !== 'OK' || !tokenResult.token) {
+    const detail =
+      tokenResult.errors?.[0]?.message || 'Wallet payment was not completed. Try again or use your card.';
+    throw new Error(detail);
+  }
+  return tokenResult.token;
+}
 
 async function getSquarePayments() {
   await loadSquareWebSdk();
@@ -1073,7 +1183,7 @@ async function showBookingDepositPayment({
   const msg = document.createElement('p');
   msg.className = 'booking-deposit-intro';
   msg.textContent =
-    'Your appointment details are saved. Pay your deposit below to secure your date. Choose card (includes a processing fee) or bank transfer (ACH, no card fee).';
+    'Your appointment details are saved. Pay your deposit below to secure your date. Use Apple Pay, Google Pay, card (includes a processing fee), or bank transfer (ACH, no card fee).';
   status.appendChild(msg);
 
   const payBox = document.createElement('div');
@@ -1094,7 +1204,7 @@ async function showBookingDepositPayment({
   cardTab.className = 'booking-pay-method-tab is-active';
   cardTab.setAttribute('role', 'tab');
   cardTab.setAttribute('aria-selected', 'true');
-  cardTab.textContent = 'Card';
+  cardTab.textContent = 'Card / wallet';
 
   const achTab = document.createElement('button');
   achTab.type = 'button';
@@ -1110,6 +1220,30 @@ async function showBookingDepositPayment({
   const amountLine = document.createElement('div');
   amountLine.className = 'booking-deposit-summary';
   payBox.appendChild(amountLine);
+
+  const walletWrap = document.createElement('div');
+  walletWrap.className = 'booking-wallet-wrap';
+  walletWrap.hidden = true;
+
+  const googlePayContainer = document.createElement('div');
+  googlePayContainer.className = 'booking-google-pay-button';
+  googlePayContainer.setAttribute('role', 'button');
+  googlePayContainer.setAttribute('aria-label', 'Pay with Google Pay');
+  walletWrap.appendChild(googlePayContainer);
+
+  const applePayButton = document.createElement('button');
+  applePayButton.type = 'button';
+  applePayButton.className = 'booking-apple-pay-button';
+  applePayButton.setAttribute('aria-label', 'Pay with Apple Pay');
+  applePayButton.hidden = true;
+  walletWrap.appendChild(applePayButton);
+
+  const walletDivider = document.createElement('p');
+  walletDivider.className = 'booking-wallet-divider';
+  walletDivider.textContent = 'or pay with card';
+  walletWrap.appendChild(walletDivider);
+
+  payBox.appendChild(walletWrap);
 
   const cardWrap = document.createElement('div');
   cardWrap.id = 'square-card-container';
@@ -1135,6 +1269,71 @@ async function showBookingDepositPayment({
 
   status.appendChild(payBox);
 
+  let walletPayBusy = false;
+
+  async function runWalletDeposit(wallet) {
+    if (walletPayBusy) return;
+    walletPayBusy = true;
+    payErr.hidden = true;
+    payBtn.disabled = true;
+    try {
+      const sourceId = await tokenizeSquareWallet(wallet);
+      const attemptId =
+        typeof crypto !== 'undefined' && crypto.randomUUID
+          ? crypto.randomUUID()
+          : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      const data = await submitDepositPayment({
+        bookingId,
+        sourceId,
+        attemptId,
+        paymentMethod: 'card',
+      });
+      clearPendingAchDeposit();
+      stripAchRedirectQuery();
+      appendDepositSuccess(status, payBox, data);
+    } catch (err) {
+      payErr.hidden = false;
+      payErr.textContent = err instanceof Error ? err.message : 'Wallet payment failed.';
+      payBtn.disabled = false;
+      updateDepositSummary();
+    } finally {
+      walletPayBusy = false;
+    }
+  }
+
+  async function ensureWalletButtonsReady() {
+    if (paymentMethod !== 'card') return;
+    try {
+      const payments = await getSquarePayments();
+      const ok = await mountSquareWalletButtons({
+        payments,
+        googlePayContainer,
+        applePayButton,
+        walletWrap,
+        depositBaseCents,
+        depositFeeCents,
+        depositCardChargeCents,
+        pct,
+      });
+      if (!ok) return;
+
+      googlePayContainer.onclick = (event) => {
+        if (!bbmSquareGooglePay) return;
+        event.preventDefault();
+        runWalletDeposit(bbmSquareGooglePay);
+      };
+
+      applePayButton.onclick = (event) => {
+        event.preventDefault();
+        if (!bbmSquareApplePay) return;
+        runWalletDeposit(bbmSquareApplePay);
+      };
+    } catch (err) {
+      console.warn('[Blendz] Wallet buttons failed', err);
+      walletWrap.hidden = true;
+    }
+  }
+
   function updateDepositSummary() {
     const isCard = paymentMethod === 'card';
     cardTab.classList.toggle('is-active', isCard);
@@ -1142,6 +1341,7 @@ async function showBookingDepositPayment({
     achTab.classList.toggle('is-active', !isCard);
     achTab.setAttribute('aria-selected', !isCard ? 'true' : 'false');
     cardWrap.hidden = !isCard;
+    if (!isCard) walletWrap.hidden = true;
     achInfo.hidden = isCard;
     if (isCard) {
       amountLine.innerHTML =
@@ -1194,12 +1394,15 @@ async function showBookingDepositPayment({
     payErr.hidden = true;
     updateDepositSummary();
     await ensureCardFormReady();
+    await ensureWalletButtonsReady();
   });
 
-  achTab.addEventListener('click', () => {
+  achTab.addEventListener('click', async () => {
     if (paymentMethod === 'ach') return;
     paymentMethod = 'ach';
     payErr.hidden = true;
+    await destroySquareWallets();
+    walletWrap.hidden = true;
     updateDepositSummary();
   });
 
@@ -1208,6 +1411,8 @@ async function showBookingDepositPayment({
     if (cardMountFailed) {
       paymentMethod = 'ach';
       updateDepositSummary();
+    } else {
+      await ensureWalletButtonsReady();
     }
   }
 
@@ -1260,19 +1465,7 @@ async function showBookingDepositPayment({
       });
       clearPendingAchDeposit();
       stripAchRedirectQuery();
-      status.textContent = '';
-      const done = document.createElement('p');
-      let doneText = renderDepositSuccessMessage(data);
-      if (data.emailSent) {
-        doneText += ' A confirmation has been sent to your email.';
-      }
-      if (data.smsSent) {
-        doneText += ' You will also receive a confirmation text.';
-      }
-      done.className = 'booking-deposit-done';
-      done.textContent = doneText;
-      status.appendChild(done);
-      payBox.remove();
+      appendDepositSuccess(status, payBox, data);
     } catch (err) {
       payErr.hidden = false;
       payErr.textContent = err instanceof Error ? err.message : 'Payment failed.';

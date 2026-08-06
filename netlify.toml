@@ -13,6 +13,11 @@
 [functions]
   node_bundler = "esbuild"
 
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Cross-Origin-Opener-Policy = "same-origin-allow-popups"
+
 # Hourly UTC: ~72h reminder SMS (see TWILIO_SETUP.md)
 [functions.booking-reminders]
   schedule = "0 * * * *"

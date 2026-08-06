@@ -3,7 +3,7 @@
 When a client books on **blendzbymora.com**:
 
 1. They submit the booking form
-2. A **secure Square payment step** appears on the page for the **50% deposit** — **card** (includes processing fee) or **bank transfer (ACH, no card fee)**
+2. A **secure Square payment step** appears on the page for the **50% deposit** — **Apple Pay**, **Google Pay**, **card** (includes processing fee), or **bank transfer (ACH, no card fee)**
 3. After the deposit is paid, Square emails an **invoice for the remaining balance** due on the **appointment date** (card or bank transfer accepted on the invoice)
 
 Card and bank details are handled by Square (not stored on your site). You never touch raw card or bank account numbers.
@@ -69,6 +69,26 @@ Run **`sql/webhook_events.sql`** in Supabase so refund notification emails are n
 Run **`sql/bookings_deposit_paid_at.sql`** in Supabase so a date is **only held after the deposit is paid**. Submitting the form without paying no longer blocks that time slot.
 
 After saving, **deploy** the site.
+
+---
+
+## Step 4 — Apple Pay & Google Pay (optional but recommended)
+
+The booking page shows **Google Pay** and **Apple Pay** on the **Card / wallet** tab when the visitor’s browser and device support them. Wallet payments use the same deposit total as card (including the processing fee).
+
+### Google Pay
+- Works on Chrome, Safari, Edge, and Firefox over **HTTPS**
+- No extra Square setup beyond your existing Application ID and Location ID
+
+### Apple Pay (one-time Square setup)
+1. [developer.squareup.com/apps](https://developer.squareup.com/apps) → your app → **Production**
+2. Left menu → **Apple Pay**
+3. **Add Domain** → enter **`blendzbymora.com`** (and `www.blendzbymora.com` if you use www)
+4. Follow Square’s steps — Square validates the domain when someone loads the booking page
+
+Apple Pay only appears in **Safari on iPhone, iPad, or Mac** with Apple Pay set up. It will not show in Chrome on desktop.
+
+After deploy, test on your phone at **https://blendzbymora.com/book.html** with a real booking (you can refund the test deposit in Square).
 
 ---
 

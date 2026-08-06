@@ -880,6 +880,40 @@ section h2 {
   color-scheme: auto;
 }
 
+.booking-wallet-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  margin-bottom: 0.85rem;
+}
+
+.booking-google-pay-button {
+  min-height: 48px;
+  width: 100%;
+}
+
+.booking-apple-pay-button {
+  width: 100%;
+  min-height: 48px;
+  height: 48px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  -webkit-appearance: -apple-pay-button;
+  appearance: -apple-pay-button;
+  -apple-pay-button-type: plain;
+  -apple-pay-button-style: white;
+}
+
+.booking-wallet-divider {
+  margin: 0.15rem 0 0.35rem;
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: 0.82rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
 .booking-deposit-pay-btn {
   width: 100%;
   margin-top: 0.25rem;
