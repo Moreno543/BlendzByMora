@@ -18,6 +18,12 @@
   [headers.values]
     Cross-Origin-Opener-Policy = "same-origin-allow-popups"
 
+[[headers]]
+  for = "/.well-known/apple-developer-merchantid-domain-association"
+  [headers.values]
+    Content-Type = "application/octet-stream"
+    Cache-Control = "public, max-age=3600"
+
 # Hourly UTC: ~72h reminder SMS (see TWILIO_SETUP.md)
 [functions.booking-reminders]
   schedule = "0 * * * *"
