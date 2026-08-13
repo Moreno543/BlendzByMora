@@ -136,7 +136,7 @@ Square also sends its own refund receipt to the customer; Formspree adds your br
 
 ## How pricing works
 
-Service price is parsed from the dropdown (e.g. `Soft Glam - $100` → **$50** deposit + **$50** balance).
+Service price is parsed from the dropdown (e.g. `Soft Glam - $125` → **$62.50** deposit + **$62.50** balance).
 
 **Card processing fee:** Each Square **card** payment (deposit and balance invoice) adds **3.3% + $0.30** to the amount charged so processing costs are covered. If the client pays both by card, the fee applies **twice**. **Bank transfer (ACH)**, cash, and Zelle are not subject to this fee. ACH deposits may show as **PENDING** for 2–3 business days before they complete.
 

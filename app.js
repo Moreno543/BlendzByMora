@@ -749,7 +749,7 @@ async function fetchClientIpForBooking() {
   }
 }
 
-/** Parse service price from option label (e.g. "Soft Glam - $100" → 10000 cents). */
+/** Parse service price from option label (e.g. "Soft Glam - $125" → 12500 cents). */
 function parseBookingServicePriceCents(serviceLabel) {
   const matches = [...String(serviceLabel || '').matchAll(/\$(\d+(?:\.\d{2})?)/g)];
   if (!matches.length) return null;
