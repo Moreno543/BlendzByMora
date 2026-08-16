@@ -1,6 +1,8 @@
 /** Shared booking slot list (matches app.js / admin). */
 export const BOOKING_TIME_SLOTS = ['8:00 AM', '10:00 AM', '12:00 PM', '2:00 PM', '4:00 PM'];
 
+import { getBlockedTimesForDate } from './blackout-dates.mjs';
+
 const YMD_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 export function isValidSlotTime(time) {
@@ -24,7 +26,9 @@ export async function getBookedTimesForDate(supabase, dateStr, excludeBookingId 
   return (data || [])
     .filter((row) => !excludeBookingId || String(row.id) !== String(excludeBookingId))
     .map((row) => String(row.time || '').trim())
-    .filter(Boolean);
+    .filter(Boolean)
+    .concat(getBlockedTimesForDate(dateStr))
+    .filter((time, index, arr) => arr.indexOf(time) === index);
 }
 
 export function slotsWithAvailability(bookedTimes) {

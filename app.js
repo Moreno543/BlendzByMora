@@ -450,6 +450,20 @@ function slotHasOneHourLead(dateStr, timeLabel) {
   return slot.getTime() - Date.now() >= 60 * 60 * 1000;
 }
 
+function getConfigBlockedTimes(dateStr) {
+  const norm = normalizeDateStr(dateStr);
+  if (!norm || typeof CONFIG === 'undefined') return [];
+  const times = [];
+  for (const entry of CONFIG.BLOCKED_SLOTS || []) {
+    if (normalizeDateStr(entry?.date) !== norm) continue;
+    for (const t of entry.times || []) {
+      const slot = String(t || '').trim();
+      if (slot && BOOKING_TIME_SLOTS.includes(slot)) times.push(slot);
+    }
+  }
+  return times;
+}
+
 // Fetch booked slots; disable past slots and slots <1 hr away (last slot 4pm → same-day closes after ~3pm)
 async function updateTimeSlots(dateStr) {
   const timeSelect = document.getElementById('time');
@@ -486,6 +500,8 @@ async function updateTimeSlots(dateStr) {
       console.warn('Supabase not configured or error:', err);
     }
   }
+
+  booked = [...new Set([...booked, ...getConfigBlockedTimes(dateStr)])];
 
   if (requestId !== updateTimeSlotsSeq) return;
 

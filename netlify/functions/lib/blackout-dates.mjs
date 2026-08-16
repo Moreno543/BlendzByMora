@@ -26,6 +26,9 @@ export const BLACKOUT_DATES = [
   '2026-12-25',
 ];
 
+/** Manual slot holds — keep in sync with config.js BLOCKED_SLOTS */
+export const BLOCKED_SLOTS = [{ date: '2026-09-19', times: ['12:00 PM'], note: 'Personal booking' }];
+
 const blackoutSet = new Set(BLACKOUT_DATES);
 const blockWeekdays = new Set(BLACKOUT_RANGE.blockWeekdays || []);
 
@@ -41,4 +44,26 @@ export function isDateBlackedOut(dateStr) {
     if (blockWeekdays.has(weekday)) return true;
   }
   return false;
+}
+
+/** @param {string} dateStr YYYY-MM-DD */
+export function getBlockedTimesForDate(dateStr) {
+  const s = String(dateStr || '').trim().slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return [];
+  const times = [];
+  for (const entry of BLOCKED_SLOTS) {
+    if (String(entry?.date || '').trim().slice(0, 10) === s) {
+      for (const t of entry.times || []) {
+        const slot = String(t || '').trim();
+        if (slot) times.push(slot);
+      }
+    }
+  }
+  return times;
+}
+
+export function isSlotManuallyBlocked(dateStr, timeStr) {
+  const slot = String(timeStr || '').trim();
+  if (!slot) return false;
+  return getBlockedTimesForDate(dateStr).includes(slot);
 }

@@ -19,6 +19,7 @@ import {
   cardProcessingFeeCents,
   cardProcessingFeeLabel,
 } from './lib/card-processing-fee.mjs';
+import { isSlotManuallyBlocked } from './lib/blackout-dates.mjs';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -125,6 +126,16 @@ export default async function handler(request) {
       JSON.stringify({
         ok: false,
         error: 'That time was just booked by someone else. Please go back and choose another slot.',
+      }),
+      { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  if (isSlotManuallyBlocked(row.date, row.time)) {
+    return new Response(
+      JSON.stringify({
+        ok: false,
+        error: 'That time is no longer available. Please go back and choose another slot.',
       }),
       { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

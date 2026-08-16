@@ -95,4 +95,9 @@ const CONFIG = {
     '2026-11-26',   // Thanksgiving
     '2026-12-25',   // Christmas
   ],
+
+  // Manual holds — block specific date/time slots (personal bookings, etc.). Keep in sync with netlify/functions/lib/blackout-dates.mjs
+  BLOCKED_SLOTS: [
+    { date: '2026-09-19', times: ['12:00 PM'], note: 'Personal booking' },
+  ],
 };
