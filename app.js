@@ -9,17 +9,21 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   const bookingForm = document.getElementById('booking-form');
+  if (bookingForm && readPendingAchDeposit()?.bookingId) {
+    bookingForm.hidden = true;
+    document.querySelector('.booking-intro')?.setAttribute('hidden', '');
+  }
   if (bookingForm) {
     const sel = document.getElementById('service');
     const params = new URLSearchParams(window.location.search);
     const q = params.get('service');
-    if (q && sel) {
+    if (q && sel && !readPendingAchDeposit()?.bookingId) {
       try {
         sel.value = decodeURIComponent(q);
       } catch (_) {}
       history.replaceState(null, '', window.location.pathname);
       sessionStorage.removeItem('booking-service');
-    } else {
+    } else if (!readPendingAchDeposit()?.bookingId) {
       const stored = sessionStorage.getItem('booking-service');
       if (stored && sel) {
         sel.value = stored;
@@ -37,7 +41,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initNavScroll();
   initDatePicker();
   initBookingForm();
-  maybeResumeAchDepositPayment();
+  maybeResumeAchDepositPayment().catch((err) => console.warn('[Blendz] resume deposit', err));
   initTravelNotes();
   initReviewForm();
   loadReviews();
@@ -1097,8 +1101,21 @@ function tokenizeAchPayment(ach, { accountHolderName, amountCents }) {
 }
 
 function savePendingAchDeposit(data) {
+  const payload = JSON.stringify(data);
   try {
-    sessionStorage.setItem(BBM_PENDING_DEPOSIT_KEY, JSON.stringify(data));
+    sessionStorage.setItem(BBM_PENDING_DEPOSIT_KEY, payload);
+  } catch (_) {
+    /* ignore */
+  }
+  try {
+    localStorage.setItem(BBM_PENDING_DEPOSIT_KEY, payload);
+  } catch (_) {
+    /* ignore */
+  }
+  try {
+    if (/book\.html$/i.test(window.location.pathname) && window.location.hash !== '#pay') {
+      window.history.replaceState({}, '', window.location.pathname + window.location.search + '#pay');
+    }
   } catch (_) {
     /* ignore */
   }
@@ -1110,15 +1127,32 @@ function clearPendingAchDeposit() {
   } catch (_) {
     /* ignore */
   }
+  try {
+    localStorage.removeItem(BBM_PENDING_DEPOSIT_KEY);
+  } catch (_) {
+    /* ignore */
+  }
+  try {
+    if (window.location.hash === '#pay') {
+      window.history.replaceState({}, '', window.location.pathname + window.location.search);
+    }
+  } catch (_) {
+    /* ignore */
+  }
 }
 
 function readPendingAchDeposit() {
-  try {
-    const raw = sessionStorage.getItem(BBM_PENDING_DEPOSIT_KEY);
-    return raw ? JSON.parse(raw) : null;
-  } catch (_) {
-    return null;
+  for (const store of [sessionStorage, localStorage]) {
+    try {
+      const raw = store.getItem(BBM_PENDING_DEPOSIT_KEY);
+      if (!raw) continue;
+      const data = JSON.parse(raw);
+      if (data && data.bookingId) return data;
+    } catch (_) {
+      /* ignore */
+    }
   }
+  return null;
 }
 
 function stripAchRedirectQuery() {
@@ -1705,28 +1739,44 @@ async function maybeResumeAchDepositPayment() {
   if (transactionId && pending.transactionId && pending.transactionId !== transactionId) return;
   if (document.querySelector('.booking-deposit-pay')) return;
 
+  const restoreForm = () => {
+    const form = document.getElementById('booking-form');
+    if (form) form.hidden = false;
+    document.querySelector('.booking-intro')?.removeAttribute('hidden');
+  };
+
   const savedAt = Number(pending.savedAt) || 0;
   if (savedAt && Date.now() - savedAt > 24 * 60 * 60 * 1000) {
     clearPendingAchDeposit();
+    restoreForm();
     return;
   }
 
   const status = document.getElementById('booking-status');
-  if (!status || !bookingDepositConfigured()) return;
+  if (!status || !bookingDepositConfigured()) {
+    restoreForm();
+    return;
+  }
 
   const fromAchRedirect = Boolean(transactionId);
   if (fromAchRedirect) stripAchRedirectQuery();
 
   const method = fromAchRedirect || pending.paymentMethod === 'ach' ? 'ach' : 'card';
-  await showBookingDepositPayment({
-    status,
-    bookingId: pending.bookingId,
-    serviceLabel: pending.serviceLabel || '',
-    customerName: pending.customerName || '',
-    date: pending.date || '',
-    time: pending.time || '',
-    initialPaymentMethod: method,
-  });
+  try {
+    const shown = await showBookingDepositPayment({
+      status,
+      bookingId: pending.bookingId,
+      serviceLabel: pending.serviceLabel || '',
+      customerName: pending.customerName || '',
+      date: pending.date || '',
+      time: pending.time || '',
+      initialPaymentMethod: method,
+    });
+    if (!shown) restoreForm();
+  } catch (err) {
+    restoreForm();
+    throw err;
+  }
 
   if (fromAchRedirect) {
     const resumeMsg = document.createElement('p');
@@ -2049,6 +2099,18 @@ function initBookingForm() {
           throw error;
         }
         bookingId = insertedId != null ? String(insertedId).trim() : '';
+      }
+
+      if (bookingId && bookingDepositConfigured()) {
+        savePendingAchDeposit({
+          bookingId,
+          serviceLabel: bookingPayload.service,
+          customerName: bookingPayload.name,
+          date: bookingPayload.date,
+          time: bookingPayload.time,
+          paymentMethod: 'card',
+          savedAt: Date.now(),
+        });
       }
 
       const deferConfirmations = Boolean(bookingId && bookingDepositConfigured());
