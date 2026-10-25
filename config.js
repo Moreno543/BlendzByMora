@@ -96,7 +96,7 @@ const CONFIG = {
     '2026-07-04',   // Independence Day
     '2026-09-07',   // Labor Day
     '2026-10-12',   // Columbus Day
-    '2026-11-11',   // Veterans Day
+    '2026-11-09', '2026-11-10', '2026-11-11', '2026-11-12',  // Nov 9–12 (includes Veterans Day)
     '2026-11-23', '2026-11-24', '2026-11-25', '2026-11-26', '2026-11-27',  // Nov 23–27 (Thanksgiving week)
     '2026-12-25',   // Christmas
     '2027-01-01',   // New Year's Day 2027
