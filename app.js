@@ -1188,13 +1188,13 @@ function squareDepositCardStyle() {
       backgroundColor: fieldBg,
     },
     'input.is-error': {
-      color: red,
+      color: text,
     },
     '.message-text': {
-      color: red,
+      color: 'transparent',
     },
     '.message-icon': {
-      color: red,
+      color: 'transparent',
     },
     '.message-text.is-error': {
       color: red,
@@ -1228,9 +1228,15 @@ function squareDepositCardStyleFallback() {
       borderRadius: '4px',
     },
     '.message-text': {
-      color: '#ef4444',
+      color: 'transparent',
     },
     '.message-icon': {
+      color: 'transparent',
+    },
+    '.message-text.is-error': {
+      color: '#ef4444',
+    },
+    '.message-icon.is-error': {
       color: '#ef4444',
     },
   };
@@ -1526,6 +1532,14 @@ async function showBookingDepositPayment({
     try {
       await mountSquareDepositForm(cardWrap);
       cardMountFailed = false;
+      const hidePayErr = () => {
+        payErr.hidden = true;
+      };
+      bbmSquareCard?.addEventListener('errorClassRemoved', hidePayErr);
+      bbmSquareCard?.addEventListener('focusClassAdded', hidePayErr);
+      if (typeof bbmSquareCard?.recalculateSize === 'function') {
+        bbmSquareCard.recalculateSize();
+      }
       return true;
     } catch (err) {
       cardMountFailed = true;
