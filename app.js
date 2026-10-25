@@ -9,7 +9,11 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   const bookingForm = document.getElementById('booking-form');
-  if (bookingForm && readPendingAchDeposit()?.bookingId) {
+  const resumeCheckout = Boolean(bookingForm && shouldResumeDepositCheckout());
+  if (bookingForm && !resumeCheckout) {
+    clearPendingAchDeposit();
+  }
+  if (resumeCheckout) {
     bookingForm.hidden = true;
     document.querySelector('.booking-intro')?.setAttribute('hidden', '');
   }
@@ -17,13 +21,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const sel = document.getElementById('service');
     const params = new URLSearchParams(window.location.search);
     const q = params.get('service');
-    if (q && sel && !readPendingAchDeposit()?.bookingId) {
+    if (q && sel && !resumeCheckout) {
       try {
         sel.value = decodeURIComponent(q);
       } catch (_) {}
       history.replaceState(null, '', window.location.pathname);
       sessionStorage.removeItem('booking-service');
-    } else if (!readPendingAchDeposit()?.bookingId) {
+    } else if (!resumeCheckout) {
       const stored = sessionStorage.getItem('booking-service');
       if (stored && sel) {
         sel.value = stored;
@@ -42,6 +46,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initDatePicker();
   initBookingForm();
   maybeResumeAchDepositPayment().catch((err) => console.warn('[Blendz] resume deposit', err));
+  initAbandonDepositCheckoutOnLeave();
   initTravelNotes();
   initReviewForm();
   loadReviews();
@@ -1155,6 +1160,65 @@ function readPendingAchDeposit() {
   return null;
 }
 
+function isBookingPageReload() {
+  try {
+    const nav = performance.getEntriesByType && performance.getEntriesByType('navigation')[0];
+    if (nav && nav.type) return nav.type === 'reload';
+  } catch (_) {
+    /* ignore */
+  }
+  try {
+    return typeof performance !== 'undefined' && performance.navigation && performance.navigation.type === 1;
+  } catch (_) {
+    /* ignore */
+  }
+  return false;
+}
+
+function isAchDepositReturn() {
+  return Boolean(new URLSearchParams(window.location.search).get('transactionId'));
+}
+
+/** Only a browser refresh of checkout restores the deposit step. */
+function shouldResumeDepositCheckout() {
+  if (!readPendingAchDeposit()?.bookingId) return false;
+  if (isAchDepositReturn()) return true;
+  return isBookingPageReload();
+}
+
+function initAbandonDepositCheckoutOnLeave() {
+  if (!document.getElementById('booking-form')) return;
+
+  const restartBooking = () => {
+    clearPendingAchDeposit();
+    window.location.replace('book.html');
+  };
+
+  const isSameTabSiteLink = (a, href) => {
+    if (!a || !href) return false;
+    if (a.target === '_blank' || href.startsWith('mailto:') || href.startsWith('tel:')) return false;
+    if (href.startsWith('#')) return false;
+    if (/^https?:/i.test(href) && !/blendzbymora\.com/i.test(href)) return false;
+    return true;
+  };
+
+  document.querySelectorAll('a[href]').forEach((a) => {
+    const href = a.getAttribute('href') || '';
+    if (!isSameTabSiteLink(a, href)) return;
+    a.addEventListener('click', (e) => {
+      if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      const onCheckout = Boolean(document.querySelector('.booking-deposit-pay'));
+      const isBookLink = /book\.html/i.test(href) || a.classList.contains('nav-book');
+      if (!onCheckout && !readPendingAchDeposit()?.bookingId && !isBookLink) return;
+      clearPendingAchDeposit();
+      if (isBookLink) {
+        e.preventDefault();
+        restartBooking();
+      }
+    });
+  });
+}
+
 function stripAchRedirectQuery() {
   const params = new URLSearchParams(window.location.search);
   if (!params.has('transactionId')) return;
@@ -1732,6 +1796,7 @@ async function showBookingDepositPayment({
 
 /** Restore the deposit step after refresh, or after Square bank-login redirect. */
 async function maybeResumeAchDepositPayment() {
+  if (!shouldResumeDepositCheckout()) return;
   const params = new URLSearchParams(window.location.search);
   const transactionId = params.get('transactionId');
   const pending = readPendingAchDeposit();
