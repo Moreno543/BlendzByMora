@@ -1296,6 +1296,17 @@ async function showBookingDepositPayment({
   const feeLabel = cardProcessingFeeLabel();
   let paymentMethod = initialPaymentMethod === 'ach' ? 'ach' : 'card';
 
+  savePendingAchDeposit({
+    ...(readPendingAchDeposit() || {}),
+    bookingId,
+    serviceLabel,
+    customerName,
+    date,
+    time,
+    paymentMethod,
+    savedAt: Date.now(),
+  });
+
   status.className = 'booking-status success';
   status.textContent = '';
   status.style.display = 'block';
@@ -1569,6 +1580,16 @@ async function showBookingDepositPayment({
     if (paymentMethod === 'card') return;
     paymentMethod = 'card';
     payErr.hidden = true;
+    savePendingAchDeposit({
+      ...(readPendingAchDeposit() || {}),
+      bookingId,
+      serviceLabel,
+      customerName,
+      date,
+      time,
+      paymentMethod: 'card',
+      savedAt: Date.now(),
+    });
     updateDepositSummary();
     await ensureCardFormReady();
     await ensureWalletButtonsReady();
@@ -1578,6 +1599,16 @@ async function showBookingDepositPayment({
     if (paymentMethod === 'ach') return;
     paymentMethod = 'ach';
     payErr.hidden = true;
+    savePendingAchDeposit({
+      ...(readPendingAchDeposit() || {}),
+      bookingId,
+      serviceLabel,
+      customerName,
+      date,
+      time,
+      paymentMethod: 'ach',
+      savedAt: Date.now(),
+    });
     await destroySquareWallets();
     walletWrap.hidden = true;
     updateDepositSummary();
@@ -1665,18 +1696,28 @@ async function showBookingDepositPayment({
   return true;
 }
 
-/** If Square redirected back after Plaid bank login, restore the deposit step. */
+/** Restore the deposit step after refresh, or after Square bank-login redirect. */
 async function maybeResumeAchDepositPayment() {
   const params = new URLSearchParams(window.location.search);
   const transactionId = params.get('transactionId');
   const pending = readPendingAchDeposit();
-  if (!transactionId || !pending?.bookingId) return;
-  if (pending.transactionId && pending.transactionId !== transactionId) return;
+  if (!pending?.bookingId) return;
+  if (transactionId && pending.transactionId && pending.transactionId !== transactionId) return;
+  if (document.querySelector('.booking-deposit-pay')) return;
+
+  const savedAt = Number(pending.savedAt) || 0;
+  if (savedAt && Date.now() - savedAt > 24 * 60 * 60 * 1000) {
+    clearPendingAchDeposit();
+    return;
+  }
 
   const status = document.getElementById('booking-status');
   if (!status || !bookingDepositConfigured()) return;
 
-  stripAchRedirectQuery();
+  const fromAchRedirect = Boolean(transactionId);
+  if (fromAchRedirect) stripAchRedirectQuery();
+
+  const method = fromAchRedirect || pending.paymentMethod === 'ach' ? 'ach' : 'card';
   await showBookingDepositPayment({
     status,
     bookingId: pending.bookingId,
@@ -1684,14 +1725,16 @@ async function maybeResumeAchDepositPayment() {
     customerName: pending.customerName || '',
     date: pending.date || '',
     time: pending.time || '',
-    initialPaymentMethod: 'ach',
+    initialPaymentMethod: method,
   });
 
-  const resumeMsg = document.createElement('p');
-  resumeMsg.className = 'booking-deposit-resume-note';
-  resumeMsg.textContent =
-    'Welcome back — finish your bank transfer by clicking the pay button below.';
-  status.insertBefore(resumeMsg, status.querySelector('.booking-deposit-pay'));
+  if (fromAchRedirect) {
+    const resumeMsg = document.createElement('p');
+    resumeMsg.className = 'booking-deposit-resume-note';
+    resumeMsg.textContent =
+      'Welcome back — finish your bank transfer by clicking the pay button below.';
+    status.insertBefore(resumeMsg, status.querySelector('.booking-deposit-pay'));
+  }
 }
 
 /** Reoon email verification via Netlify (optional); skipped if REOON_API_KEY unset. */
