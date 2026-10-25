@@ -41,28 +41,40 @@
   <main class="services-page">
     <section id="book" class="booking">
       <h2>Book Your Appointment</h2>
-      <p class="booking-intro">Available 8am–6pm Monday thru Sunday. Last booking at 4pm. A <strong>50% deposit</strong> is required to secure your appointment; pay with <strong>Apple Pay</strong>, <strong>Google Pay</strong>, <strong>card</strong>, or <strong>bank transfer (ACH)</strong> on this page after you submit. Card and wallet payments include a <strong>3.3% + $0.30 processing fee per transaction</strong> (deposit and balance invoice are separate payments). Bank transfer has <strong>no card processing fee</strong>. The remaining balance is due on your service date. <strong>Cash and Zelle</strong> are also accepted where agreed.</p>
+      <p class="booking-intro">Reserve your glam appointment in just a few steps. A <strong>50% deposit</strong> secures your booking, with the remaining balance due on your appointment date. You’ll review all payment details before confirming.</p>
+      <p class="booking-hours">Available 8am–6pm Monday thru Sunday. Last booking at 4pm.</p>
+      <ol class="booking-steps" aria-label="How booking works">
+        <li>Choose your glam</li>
+        <li>Select your preferred appointment</li>
+        <li>Enter your contact information</li>
+        <li>Review the deposit and policies, then confirm</li>
+      </ol>
+      <div id="booking-confirmed" class="booking-confirmed" hidden>
+        <dl class="booking-confirmed-details"></dl>
+      </div>
       <div class="booking-container">
         <form id="booking-form" class="booking-form">
+          <p class="booking-step-heading">1. Choose your glam</p>
           <div class="form-row">
             <label for="service">Service</label>
             <select id="service" name="service" required>
               <option value="">Select a service</option>
               <optgroup label="Glam">
-                <option value="Soft Glam - $125">Soft Glam — $125</option>
-                <option value="Full Glam - $175">Full Glam — $175</option>
+                <option value="Soft Glam - $120">Soft Glam — $120</option>
+                <option value="Full Glam - $160">Full Glam — $160</option>
               </optgroup>
               <optgroup label="Bridal">
-                <option value="Mother of the Bride Glam - $150">Mother of the Bride Glam — $150</option>
-                <option value="Mother of the Groom Glam - $150">Mother of the Groom Glam — $150</option>
-                <option value="Bridesmaid Glam - $150">Bridesmaid Glam — $150</option>
+                <option value="Mother of the Bride Glam - $140">Mother of the Bride Glam — $140</option>
+                <option value="Mother of the Groom Glam - $140">Mother of the Groom Glam — $140</option>
+                <option value="Bridesmaid Glam - $140">Bridesmaid Glam — $140</option>
                 <option value="Day-of Bridal Makeup - $400">Day-of Bridal Makeup — $400</option>
                 <option value="Bridal Glam + Bridal Trial + Custom Touch Up Kit - $600">Bridal Glam + Bridal Trial + Custom Touch Up Kit — $600</option>
-                <option value="Bridal Glam + Rehearsal Dinner Glam - $550">Bridal Glam + Rehearsal Dinner Glam — $550</option>
-                <option value="Bridal Trial + Rehearsal Dinner Glam + Day of Bridal Glam + Custom Touch-up Kit - $700">Bridal Trial + Rehearsal Dinner Glam + Day of Bridal Glam + Custom Touch-up Kit — $700</option>
+                <option value="Bridal Glam + Rehearsal Dinner Glam - $500">Bridal Glam + Rehearsal Dinner Glam — $500</option>
+                <option value="Bridal Trial + Rehearsal Dinner Glam + Day of Bridal Glam + Custom Touch-up Kit - $600">Bridal Trial + Rehearsal Dinner Glam + Day of Bridal Glam + Custom Touch-up Kit — $600</option>
               </optgroup>
             </select>
           </div>
+          <p class="booking-step-heading">2. Select your preferred appointment</p>
           <div class="form-row">
             <label for="date">Date</label>
             <div class="date-input-wrapper">
@@ -76,6 +88,7 @@
               <option value="">Select a date first</option>
             </select>
           </div>
+          <p class="booking-step-heading">3. Enter your contact information</p>
           <div class="form-row">
             <label for="name">Name <span class="booking-required" aria-hidden="true">*</span></label>
             <input type="text" id="name" name="name" required placeholder="Your full name" aria-required="true">
@@ -107,14 +120,14 @@
           <div class="form-row booking-contract-consent" id="booking-contract-consent">
             <label class="booking-consent-label" for="service-agreement">
               <input type="checkbox" id="service-agreement" name="service_agreement" value="yes" required>
-              <span class="booking-consent-text">I have read and agree to the <a href="service-agreement.html" target="_blank" rel="noopener noreferrer">Service Agreement</a>, including liability, allergy disclosure, travel policy, and payment terms. <strong>Required to submit your request.</strong></span>
+              <span class="booking-consent-text">I have read and agree to the <a href="service-agreement.html" target="_blank" rel="noopener noreferrer">Service Agreement</a>, including liability, allergy disclosure, travel policy, and payment terms. <strong>Required to continue.</strong></span>
             </label>
           </div>
 
           <div class="form-row booking-sms-consent" id="booking-sms-consent">
             <label class="booking-consent-label" for="sms-consent">
               <input type="checkbox" id="sms-consent" name="sms_consent" value="yes">
-              <span class="booking-consent-text">I agree to receive SMS messages from <strong>Blendz By Mora</strong> at the phone number above — including appointment confirmations, reminders about <strong>72 hours before</strong> my appointment, and prompts to reply YES to confirm. Message frequency varies by appointment. <strong>Message and data rates may apply.</strong> Reply <strong>HELP</strong> for help, <strong>STOP</strong> to unsubscribe. See our <a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a> and <a href="terms.html" target="_blank" rel="noopener">Terms</a>. (Optional — not required to submit your request.)</span>
+              <span class="booking-consent-text">I agree to receive SMS messages from <strong>Blendz By Mora</strong> at the phone number above — including appointment confirmations, reminders about <strong>72 hours before</strong> my appointment, and prompts to reply YES to confirm. Message frequency varies by appointment. <strong>Message and data rates may apply.</strong> Reply <strong>HELP</strong> for help, <strong>STOP</strong> to unsubscribe. See our <a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a> and <a href="terms.html" target="_blank" rel="noopener">Terms</a>. (Optional — not required to continue.)</span>
             </label>
           </div>
 
@@ -132,7 +145,8 @@
             <input type="text" id="bbm-hp-url" name="bbm_hp" tabindex="-1" autocomplete="off">
           </div>
 
-          <button type="submit" class="btn btn-submit">Request Appointment</button>
+          <p class="booking-checkout-hint">Next you’ll review the deposit, fees, and policies, then pay to confirm your appointment.</p>
+          <button type="submit" class="btn btn-submit">Continue to checkout</button>
         </form>
         <div id="booking-status" class="booking-status"></div>
       </div>
@@ -146,8 +160,8 @@
 
   <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="config.js?v=10"></script>
+  <script src="config.js?v=11"></script>
   <script src="analytics.js?v=1"></script>
-  <script src="app.js?v=52"></script>
+  <script src="app.js?v=54"></script>
 </body>
 </html>

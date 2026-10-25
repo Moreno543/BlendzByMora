@@ -765,7 +765,7 @@ async function fetchClientIpForBooking() {
   }
 }
 
-/** Parse service price from option label (e.g. "Soft Glam - $125" → 12500 cents). */
+/** Parse service price from option label (e.g. "Soft Glam - $120" → 12000 cents). */
 function parseBookingServicePriceCents(serviceLabel) {
   const matches = [...String(serviceLabel || '').matchAll(/\$(\d+(?:\.\d{2})?)/g)];
   if (!matches.length) return null;
@@ -945,7 +945,62 @@ async function mountSquareWalletButtons({
   return walletAvailable;
 }
 
-function appendDepositSuccess(status, payBox, data) {
+function formatBookedServiceLabel(serviceLabel) {
+  const raw = String(serviceLabel || '').trim();
+  const withoutPrice = raw.replace(/\s*[—–-]\s*\$[\d,.]+.*$/, '').trim();
+  return withoutPrice || raw;
+}
+
+function formatBookedDateLabel(dateStr) {
+  const norm = normalizeDateStr(dateStr);
+  if (!norm) return String(dateStr || '').trim();
+  const [year, month, day] = norm.split('-').map(Number);
+  const dt = new Date(year, month - 1, day);
+  if (Number.isNaN(dt.getTime())) return String(dateStr || '').trim();
+  return dt.toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
+
+function showBookedConfirmationPage({ serviceLabel, date, time, achPending }) {
+  const section = document.querySelector('section.booking');
+  const title = section?.querySelector('h2');
+  if (title) title.textContent = achPending ? 'Transfer submitted' : "You're booked";
+  document.querySelector('.booking-intro')?.setAttribute('hidden', '');
+  document.querySelector('.booking-hours')?.setAttribute('hidden', '');
+  document.querySelector('.booking-steps')?.setAttribute('hidden', '');
+  const form = document.getElementById('booking-form');
+  if (form) form.hidden = true;
+
+  const wrap = document.getElementById('booking-confirmed');
+  const details = wrap?.querySelector('.booking-confirmed-details');
+  if (!wrap || !details) return;
+  details.replaceChildren();
+  const rows = [
+    ['Glam', formatBookedServiceLabel(serviceLabel)],
+    ['Date', formatBookedDateLabel(date)],
+    ['Time', String(time || '').trim()],
+  ].filter(([, value]) => value);
+  for (const [label, value] of rows) {
+    const dt = document.createElement('dt');
+    dt.textContent = label;
+    const dd = document.createElement('dd');
+    dd.textContent = value;
+    details.append(dt, dd);
+  }
+  wrap.hidden = false;
+}
+
+function appendDepositSuccess(status, payBox, data, bookingDetails = {}) {
+  showBookedConfirmationPage({
+    serviceLabel: bookingDetails.serviceLabel,
+    date: bookingDetails.date,
+    time: bookingDetails.time,
+    achPending: data.achPending === true,
+  });
   status.textContent = '';
   const done = document.createElement('p');
   let doneText = renderDepositSuccessMessage(data);
@@ -1075,23 +1130,23 @@ async function submitDepositPayment({ bookingId, sourceId, attemptId, paymentMet
 
 function renderDepositSuccessMessage(data) {
   const balanceNote =
-    'The balance may be paid before or on the day of service. We accept credit and debit cards, cash, and Zelle.';
+    'The remaining 50% is due on your appointment date (or before). We accept card, cash, and Zelle.';
   const achPending = data.achPending === true;
   const paidByAch = data.paymentMethod === 'ach';
   if (achPending) {
     return (
-      'Bank transfer submitted — thank you! Your appointment is secured while the transfer completes (typically 2–3 business days). ' +
+      'Your 50% deposit is submitted by bank transfer. This date and time are reserved for you while the transfer completes (typically 2–3 business days). ' +
       `Square will email you an invoice for the remaining balance. ${balanceNote}`
     );
   }
   if (paidByAch) {
     return (
-      'Deposit paid by bank transfer — thank you! Your appointment is secured. ' +
+      'Your 50% deposit is paid by bank transfer. This date and time are confirmed and reserved for you. ' +
       `Square will email you an invoice for the remaining balance. ${balanceNote}`
     );
   }
   return (
-    'Deposit paid — thank you! Your appointment is secured. ' +
+    'Your 50% deposit is paid. This date and time are confirmed and reserved for you. ' +
     `Square will email you an invoice for the remaining balance. ${balanceNote}`
   );
 }
@@ -1209,6 +1264,8 @@ async function showBookingDepositPayment({
   bookingId,
   serviceLabel,
   customerName,
+  date,
+  time,
   initialPaymentMethod = 'card',
 }) {
   const totalCents = parseBookingServicePriceCents(serviceLabel);
@@ -1225,10 +1282,16 @@ async function showBookingDepositPayment({
   status.textContent = '';
   status.style.display = 'block';
 
+  const bookingForm = document.getElementById('booking-form');
+  if (bookingForm) bookingForm.hidden = true;
+  document.querySelector('.booking-steps')?.setAttribute('hidden', '');
+  document.querySelector('.booking-hours')?.setAttribute('hidden', '');
+  document.querySelector('.booking-intro')?.setAttribute('hidden', '');
+
   const msg = document.createElement('p');
   msg.className = 'booking-deposit-intro';
   msg.textContent =
-    'Your appointment details are saved. Pay your deposit below to secure your date. Use Apple Pay, Google Pay, card (includes a processing fee), or bank transfer (ACH, no card fee).';
+    'Your look and preferred time are saved. Review the deposit and policies below, then pay to confirm your appointment.';
   status.appendChild(msg);
 
   const payBox = document.createElement('div');
@@ -1236,8 +1299,24 @@ async function showBookingDepositPayment({
 
   const payHeading = document.createElement('h3');
   payHeading.className = 'booking-deposit-heading';
-  payHeading.textContent = 'Secure deposit';
+  payHeading.textContent = 'Review & confirm';
   payBox.appendChild(payHeading);
+
+  const policies = document.createElement('details');
+  policies.className = 'booking-deposit-policies';
+  policies.open = true;
+  const policiesSummary = document.createElement('summary');
+  policiesSummary.textContent = 'Deposit, fees, and payment methods';
+  policies.appendChild(policiesSummary);
+  const policiesBody = document.createElement('p');
+  policiesBody.innerHTML =
+    'A <strong>50% deposit</strong> confirms and reserves your appointment. The remaining balance is due on your appointment date. ' +
+    'Pay with <strong>Apple Pay</strong>, <strong>Google Pay</strong>, credit or debit card, or <strong>bank transfer (ACH)</strong>. ' +
+    'Card and wallet payments include a <strong>3.3% + $0.30 processing fee</strong> on each transaction (deposit and balance are billed separately). ' +
+    'Bank transfer has no card processing fee and typically takes 2–3 business days. Cash and Zelle are accepted for the balance where agreed. ' +
+    'Full terms: <a href="terms.html" target="_blank" rel="noopener">Terms of Service</a> · <a href="service-agreement.html" target="_blank" rel="noopener">Service Agreement</a>.';
+  policies.appendChild(policiesBody);
+  payBox.appendChild(policies);
 
   const methodTabs = document.createElement('div');
   methodTabs.className = 'booking-pay-method-tabs';
@@ -1342,7 +1421,7 @@ async function showBookingDepositPayment({
       });
       clearPendingAchDeposit();
       stripAchRedirectQuery();
-      appendDepositSuccess(status, payBox, data);
+      appendDepositSuccess(status, payBox, data, { serviceLabel, date, time });
     } catch (err) {
       payErr.hidden = false;
       payErr.textContent = err instanceof Error ? err.message : 'Wallet payment failed.';
@@ -1469,6 +1548,8 @@ async function showBookingDepositPayment({
     }
   }
 
+  status.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
   payBtn.addEventListener('click', async () => {
     payErr.hidden = true;
     payBtn.disabled = true;
@@ -1488,6 +1569,8 @@ async function showBookingDepositPayment({
           bookingId,
           serviceLabel,
           customerName: accountHolderName,
+          date,
+          time,
           paymentMethod: 'ach',
           transactionId: attemptId,
         });
@@ -1518,7 +1601,7 @@ async function showBookingDepositPayment({
       });
       clearPendingAchDeposit();
       stripAchRedirectQuery();
-      appendDepositSuccess(status, payBox, data);
+      appendDepositSuccess(status, payBox, data, { serviceLabel, date, time });
     } catch (err) {
       payErr.hidden = false;
       payErr.textContent = err instanceof Error ? err.message : 'Payment failed.';
@@ -1547,6 +1630,8 @@ async function maybeResumeAchDepositPayment() {
     bookingId: pending.bookingId,
     serviceLabel: pending.serviceLabel || '',
     customerName: pending.customerName || '',
+    date: pending.date || '',
+    time: pending.time || '',
     initialPaymentMethod: 'ach',
   });
 
@@ -1910,6 +1995,8 @@ function initBookingForm() {
           bookingId,
           serviceLabel: bookingPayload.service,
           customerName: bookingPayload.name,
+          date: bookingPayload.date,
+          time: bookingPayload.time,
         });
       }
 
@@ -1919,13 +2006,13 @@ function initBookingForm() {
         let successMsg;
         if (smsOptIn) {
           successMsg =
-            'Thank you — your appointment request has been received. A confirmation with your details and Service Agreement link has been sent to your email. You will also receive a text message with the same information. About one day before your appointment, you will get a reminder text; reply YES to that message to confirm your visit.';
+            'Thank you — your details are saved. A copy with your Service Agreement link has been sent to your email and by text. We’ll follow up shortly if online deposit isn’t available. About 72 hours before your appointment, you may get a reminder text; reply YES to confirm your visit.';
         } else if (hasFormspree) {
           successMsg =
-            'Thank you — your appointment request has been received. A confirmation with your details and Service Agreement link has been sent to your email. We will contact you to finalize your appointment.';
+            'Thank you — your details are saved. A copy with your Service Agreement link has been sent to your email. We’ll follow up shortly to complete your deposit and confirm the appointment.';
         } else {
           successMsg =
-            'Thank you — your appointment request has been received. We will contact you by email or phone to confirm your appointment.';
+            'Thank you — your details are saved. We’ll follow up by email or phone to complete your deposit and confirm the appointment.';
         }
         status.textContent = successMsg;
       }

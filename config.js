@@ -39,7 +39,7 @@
 
 const CONFIG = {
   // Service Agreement — required at booking; version logged on acceptance
-  SERVICE_AGREEMENT_VERSION: '2026-07',
+  SERVICE_AGREEMENT_VERSION: '2026-10',
   SERVICE_AGREEMENT_URL: 'https://blendzbymora.com/service-agreement.html',
 
   // Supabase - for storing bookings & preventing double bookings
