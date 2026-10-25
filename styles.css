@@ -989,15 +989,16 @@ section h2 {
   touch-action: manipulation;
 }
 
-/* Square injects a wrapper div + iframe; keep both full-width and centered */
-.square-card-container > div,
+.square-card-container > div {
+  display: block;
+  width: 100%;
+}
+
 .square-card-container iframe {
   display: block;
-  width: 100% !important;
-  max-width: 100% !important;
-  min-width: 0 !important;
-  margin: 0 auto !important;
-  box-sizing: border-box !important;
+  width: 100%;
+  max-width: 100%;
+  border: 0;
 }
 
 .booking-wallet-wrap {

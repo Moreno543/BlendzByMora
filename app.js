@@ -1165,14 +1165,24 @@ function renderDepositSuccessMessage(data) {
   );
 }
 
-/** Square card form — dark fields matching the booking form; gold focus; red validation. */
+/** Hide Square's leftover iframe hints; we show errors under Pay only when tokenize fails. */
+function squareHideInlineMessages() {
+  const hidden = { color: '#111111', fontSize: '0px' };
+  return {
+    '.message-text': hidden,
+    '.message-icon': hidden,
+    '.message-text.is-error': hidden,
+    '.message-icon.is-error': hidden,
+  };
+}
+
+/** Square card form — dark fields matching the booking form; gold focus. */
 function squareDepositCardStyle() {
   const gold = '#c9a962';
   const muted = '#a0a0a0';
   const text = '#f5f5f5';
   const fieldBg = '#141414';
   const border = '#2a2a2a';
-  const red = '#ef4444';
   return {
     input: {
       color: text,
@@ -1190,18 +1200,7 @@ function squareDepositCardStyle() {
     'input.is-error': {
       color: text,
     },
-    '.message-text': {
-      color: 'transparent',
-    },
-    '.message-icon': {
-      color: 'transparent',
-    },
-    '.message-text.is-error': {
-      color: red,
-    },
-    '.message-icon.is-error': {
-      color: red,
-    },
+    ...squareHideInlineMessages(),
     '.input-container': {
       borderColor: border,
       borderRadius: '4px',
@@ -1211,7 +1210,7 @@ function squareDepositCardStyle() {
       borderColor: gold,
     },
     '.input-container.is-error': {
-      borderColor: red,
+      borderColor: gold,
     },
   };
 }
@@ -1227,18 +1226,10 @@ function squareDepositCardStyleFallback() {
       borderColor: '#c9a962',
       borderRadius: '4px',
     },
-    '.message-text': {
-      color: 'transparent',
+    '.input-container.is-error': {
+      borderColor: '#c9a962',
     },
-    '.message-icon': {
-      color: 'transparent',
-    },
-    '.message-text.is-error': {
-      color: '#ef4444',
-    },
-    '.message-icon.is-error': {
-      color: '#ef4444',
-    },
+    ...squareHideInlineMessages(),
   };
 }
 
@@ -1255,7 +1246,12 @@ async function mountSquareDepositForm(containerEl) {
     bbmSquareCard = null;
   }
 
-  const styleAttempts = [squareDepositCardStyle(), squareDepositCardStyleFallback(), undefined];
+  const styleAttempts = [
+    squareDepositCardStyle(),
+    squareDepositCardStyleFallback(),
+    squareHideInlineMessages(),
+    undefined,
+  ];
   let lastError = null;
   for (const style of styleAttempts) {
     try {
@@ -1532,13 +1528,27 @@ async function showBookingDepositPayment({
     try {
       await mountSquareDepositForm(cardWrap);
       cardMountFailed = false;
-      const hidePayErr = () => {
+      const card = bbmSquareCard;
+      const maybeClearFieldAlarm = (event) => {
         payErr.hidden = true;
+        const detail = event?.detail || event;
+        const field = detail?.field;
+        const state = detail?.currentState;
+        if (!field || !state || typeof card?.setError !== 'function') return;
+        const filledOk =
+          state.isCompletelyValid === true ||
+          (state.isEmpty === false && state.isPotentiallyValid !== false);
+        if (!filledOk) return;
+        Promise.resolve(card.setError(field, '')).catch(() => {});
       };
-      bbmSquareCard?.addEventListener('errorClassRemoved', hidePayErr);
-      bbmSquareCard?.addEventListener('focusClassAdded', hidePayErr);
-      if (typeof bbmSquareCard?.recalculateSize === 'function') {
-        bbmSquareCard.recalculateSize();
+      card?.addEventListener('errorClassAdded', maybeClearFieldAlarm);
+      card?.addEventListener('errorClassRemoved', maybeClearFieldAlarm);
+      card?.addEventListener('focusClassAdded', () => {
+        payErr.hidden = true;
+      });
+      card?.addEventListener('focusClassRemoved', maybeClearFieldAlarm);
+      if (typeof card?.recalculateSize === 'function') {
+        card.recalculateSize();
       }
       return true;
     } catch (err) {
