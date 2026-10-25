@@ -486,63 +486,17 @@ section h2 {
 .booking-intro {
   text-align: center;
   color: var(--color-text-muted);
-  margin-bottom: 0.65rem;
+  margin-bottom: 1.75rem;
   font-size: 0.95rem;
   line-height: 1.6;
-  max-width: 38rem;
+  max-width: 36rem;
   margin-left: auto;
   margin-right: auto;
 }
 
-.booking-hours {
-  text-align: center;
-  color: var(--color-text-muted);
-  font-size: 0.82rem;
-  margin-bottom: 1.25rem;
-}
-
-.booking-steps {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.65rem 1rem;
-  list-style: none;
-  max-width: 480px;
-  margin: 0 auto 1.75rem;
-  padding: 0;
-  counter-reset: booking-step;
-}
-
-.booking-steps li {
-  counter-increment: booking-step;
-  display: flex;
-  align-items: flex-start;
-  gap: 0.6rem;
-  color: var(--color-text);
-  font-size: 0.88rem;
-  line-height: 1.4;
-}
-
-.booking-steps[hidden],
 .booking-intro[hidden],
-.booking-hours[hidden],
 .booking-confirmed[hidden] {
   display: none !important;
-}
-
-.booking-steps li::before {
-  content: counter(booking-step);
-  flex-shrink: 0;
-  width: 1.45rem;
-  height: 1.45rem;
-  border-radius: 50%;
-  border: 1px solid var(--color-accent);
-  color: var(--color-accent);
-  font-size: 0.75rem;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-top: 0.05rem;
 }
 
 .booking-confirmed {
@@ -592,6 +546,17 @@ section h2 {
   color: var(--color-text-muted);
   font-size: 0.85rem;
   line-height: 1.5;
+}
+
+.booking-alt-times {
+  margin: 0.65rem 0 0;
+  color: var(--color-text-muted);
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.booking-alt-times a {
+  color: var(--color-accent);
 }
 
 .setup-hint {
@@ -1666,8 +1631,7 @@ details[open] .faq-question::after {
   font-size: 0.88rem;
 }
 
-.hours-later a,
-.booking-hours a {
+.hours-later a {
   color: var(--color-accent);
 }
 
@@ -1758,7 +1722,4 @@ details[open] .faq-question::after {
     margin-right: auto;
   }
 
-  .booking-steps {
-    grid-template-columns: 1fr;
-  }
 }

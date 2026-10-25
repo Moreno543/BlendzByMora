@@ -982,8 +982,6 @@ function showBookedConfirmationPage({ serviceLabel, date, time, achPending }) {
   const title = section?.querySelector('h2');
   if (title) title.textContent = achPending ? 'Transfer submitted' : "You're booked";
   document.querySelector('.booking-intro')?.setAttribute('hidden', '');
-  document.querySelector('.booking-hours')?.setAttribute('hidden', '');
-  document.querySelector('.booking-steps')?.setAttribute('hidden', '');
   const form = document.getElementById('booking-form');
   if (form) form.hidden = true;
 
@@ -1302,8 +1300,6 @@ async function showBookingDepositPayment({
 
   const bookingForm = document.getElementById('booking-form');
   if (bookingForm) bookingForm.hidden = true;
-  document.querySelector('.booking-steps')?.setAttribute('hidden', '');
-  document.querySelector('.booking-hours')?.setAttribute('hidden', '');
   document.querySelector('.booking-intro')?.setAttribute('hidden', '');
 
   const msg = document.createElement('p');
