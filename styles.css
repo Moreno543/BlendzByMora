@@ -1657,6 +1657,20 @@ details[open] .faq-question::after {
   font-size: 0.95rem;
 }
 
+.hours-later {
+  margin-top: 0.65rem;
+  max-width: 28rem;
+  margin-left: auto;
+  margin-right: auto;
+  line-height: 1.5;
+  font-size: 0.88rem;
+}
+
+.hours-later a,
+.booking-hours a {
+  color: var(--color-accent);
+}
+
 /* Footer */
 .footer {
   text-align: center;

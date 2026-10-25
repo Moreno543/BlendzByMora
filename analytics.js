@@ -6,6 +6,7 @@
     typeof CONFIG !== 'undefined' && CONFIG && CONFIG.GA_MEASUREMENT_ID
       ? String(CONFIG.GA_MEASUREMENT_ID).trim()
       : '';
+  window.trackBookingEvent = function () {};
   if (!id || !/^G-[A-Z0-9]+$/i.test(id)) return;
 
   window.dataLayer = window.dataLayer || [];
@@ -15,6 +16,12 @@
   window.gtag = gtag;
   gtag('js', new Date());
   gtag('config', id, { anonymize_ip: true });
+
+  window.trackBookingEvent = function (name, params) {
+    if (typeof window.gtag !== 'function') return;
+    const payload = Object.assign({ event_category: 'booking' }, params || {});
+    window.gtag('event', name, payload);
+  };
 
   const script = document.createElement('script');
   script.async = true;

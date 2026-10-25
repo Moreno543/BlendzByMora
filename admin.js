@@ -16,6 +16,7 @@
   const countEl = document.getElementById('admin-count');
   const tbody = document.getElementById('admin-tbody');
   const confirmFilterWrap = document.getElementById('admin-confirm-filters');
+  const depositFilterWrap = document.getElementById('admin-deposit-filters');
   const refreshBtn = document.getElementById('admin-refresh');
   const rescheduleBtn = document.getElementById('admin-reschedule');
   const selectionHint = document.getElementById('admin-selection-hint');
@@ -36,6 +37,7 @@
   const rescheduleErrEl = document.getElementById('admin-reschedule-error');
 
   let confirmFilter = 'all';
+  let depositFilter = 'all';
   let selectedBooking = null;
   let rescheduleFlatpickr = null;
   let rescheduleDateStr = '';
@@ -141,6 +143,14 @@
     confirmFilterWrap.querySelectorAll('[data-confirm-filter]').forEach((btn) => {
       const v = btn.getAttribute('data-confirm-filter');
       btn.classList.toggle('btn-admin-filter-active', v === confirmFilter);
+    });
+  }
+
+  function syncDepositFilterButtons() {
+    if (!depositFilterWrap) return;
+    depositFilterWrap.querySelectorAll('[data-deposit-filter]').forEach((btn) => {
+      const v = btn.getAttribute('data-deposit-filter');
+      btn.classList.toggle('btn-admin-filter-active', v === depositFilter);
     });
   }
 
@@ -263,14 +273,19 @@
   const ADMIN_BLACKOUT_FALLBACK = {
     BLACKOUT_RANGE: {
       start: '2026-05-04',
-      end: '2026-10-28',
-      blockWeekdays: [1, 2, 3, 4],
+      end: '2026-11-05',
+      blockWeekdays: [1, 2, 3, 4, 5],
     },
     BLACKOUT_DATES: [
       '2026-04-06', '2026-04-07', '2026-04-08', '2026-04-09', '2026-04-10',
       '2026-01-01', '2026-01-19', '2026-02-16', '2026-05-25', '2026-06-19',
-      '2026-07-04', '2026-09-07', '2026-10-12', '2026-11-11', '2026-11-26', '2026-12-25',
+      '2026-07-04', '2026-09-07', '2026-10-12', '2026-11-11',
+      '2026-11-23', '2026-11-24', '2026-11-25', '2026-11-26', '2026-11-27', '2026-12-25',
+      '2027-01-01',
+      '2027-01-27', '2027-01-28', '2027-01-29', '2027-01-30', '2027-01-31',
+      '2027-02-01', '2027-02-02', '2027-02-03', '2027-02-04', '2027-02-05', '2027-02-06', '2027-02-07',
     ],
+    BLACKOUT_EXCEPTIONS: ['2026-10-30'],
   };
 
   function getBlackoutConfig() {
@@ -278,6 +293,7 @@
       return {
         BLACKOUT_RANGE: CONFIG.BLACKOUT_RANGE || ADMIN_BLACKOUT_FALLBACK.BLACKOUT_RANGE,
         BLACKOUT_DATES: CONFIG.BLACKOUT_DATES || ADMIN_BLACKOUT_FALLBACK.BLACKOUT_DATES,
+        BLACKOUT_EXCEPTIONS: CONFIG.BLACKOUT_EXCEPTIONS || ADMIN_BLACKOUT_FALLBACK.BLACKOUT_EXCEPTIONS,
       };
     }
     return ADMIN_BLACKOUT_FALLBACK;
@@ -292,6 +308,8 @@
 
   function isRescheduleDateBlackedOut(dateStr, dateObj) {
     const cfg = getBlackoutConfig();
+    const exceptionSet = new Set(cfg.BLACKOUT_EXCEPTIONS || []);
+    if (exceptionSet.has(dateStr)) return false;
     const blackoutSet = new Set(cfg.BLACKOUT_DATES || []);
     if (blackoutSet.has(dateStr)) return true;
     const range = cfg.BLACKOUT_RANGE;
@@ -446,8 +464,9 @@
     loadingEl.hidden = false;
     tbody.innerHTML = '';
     syncConfirmFilterButtons();
+    syncDepositFilterButtons();
 
-    const body = { token, confirmFilter, ...rangeCheck.extra };
+    const body = { token, confirmFilter, depositFilter, ...rangeCheck.extra };
 
     try {
       const res = await fetchBookingsWithRetry(body);
@@ -482,17 +501,25 @@
         confirmFilter = data.confirmFilter;
         syncConfirmFilterButtons();
       }
+      if (data.depositFilter && ['all', 'paid', 'unpaid'].includes(data.depositFilter)) {
+        depositFilter = data.depositFilter;
+        syncDepositFilterButtons();
+      }
 
       const rows = sortBookingsLocal(data.bookings || []);
       clearSelectedBooking();
       if (rows.length === 0) {
         const hint =
-          confirmFilter === 'confirmed'
-            ? ' No appointments in this range have an SMS YES yet.'
-            : confirmFilter === 'unconfirmed'
-              ? ' Every appointment in this range is SMS-confirmed, or there are none.'
-              : '';
-        tbody.innerHTML = `<tr><td colspan="12" class="admin-empty" data-label="">No appointments in this date range.${escapeHtml(hint)}</td></tr>`;
+          depositFilter === 'unpaid'
+            ? ' No unpaid deposits in this range.'
+            : depositFilter === 'paid'
+              ? ' No paid deposits in this range.'
+              : confirmFilter === 'confirmed'
+                ? ' No appointments in this range have an SMS YES yet.'
+                : confirmFilter === 'unconfirmed'
+                  ? ' Every appointment in this range is SMS-confirmed, or there are none.'
+                  : '';
+        tbody.innerHTML = `<tr><td colspan="13" class="admin-empty" data-label="">No appointments in this date range.${escapeHtml(hint)}</td></tr>`;
         return;
       }
 
@@ -516,6 +543,7 @@
           <td data-label="Phone">${phoneCell(r.phone)}</td>
           <td data-label="Travel" class="admin-nowrap">${cell(r.travel || '')}</td>
           <td data-label="Notes" class="admin-notes admin-td-notes">${notesCell(r.notes)}</td>
+          <td data-label="Deposit" class="admin-nowrap">${depositCell(r)}</td>
           <td data-label="IP" class="admin-nowrap">${cell(r.client_ip || '')}</td>
           <td data-label="SMS opt-in" class="admin-nowrap">${cell(r.sms_consent ? 'Yes' : 'No')}</td>
           <td data-label="SMS YES" class="admin-nowrap">${smsYesCell(r)}</td>
@@ -546,6 +574,13 @@
   function cell(text) {
     const t = escapeHtml(text);
     return t ? `<span class="admin-cell-value">${t}</span>` : '';
+  }
+
+  function depositCell(row) {
+    if (row.deposit_paid_at) {
+      return '<span class="admin-cell-value">Paid</span>';
+    }
+    return '<span class="admin-cell-value admin-deposit-unpaid">Unpaid</span>';
   }
 
   function emailCell(email) {
@@ -664,6 +699,18 @@
     });
   }
 
+  if (depositFilterWrap) {
+    depositFilterWrap.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-deposit-filter]');
+      if (!btn) return;
+      const v = btn.getAttribute('data-deposit-filter');
+      if (!v || v === depositFilter) return;
+      depositFilter = v;
+      syncDepositFilterButtons();
+      loadBookings();
+    });
+  }
+
   logoutBtn.addEventListener('click', () => {
     setToken('');
     closeRescheduleModal();
@@ -671,7 +718,9 @@
     dashboardSection.hidden = true;
     tbody.innerHTML = '';
     confirmFilter = 'all';
+    depositFilter = 'all';
     syncConfirmFilterButtons();
+    syncDepositFilterButtons();
     dateFrom.value = '';
     dateTo.value = '';
     clearSelectedBooking();

@@ -38,9 +38,32 @@ For **visitors per day**, use **Reports → Engagement → Overview** or build a
 
 **Note:** New properties can take **24–48 hours** before all reports populate. Realtime works within minutes.
 
+### Booking drop-off (where people stop)
+
+These events fire on `book.html` only. They do **not** include names, emails, or phone numbers.
+
+| Event | Meaning |
+|-------|---------|
+| `booking_view` | Opened the booking page |
+| `booking_service_selected` | Picked a glam |
+| `booking_datetime_selected` | Picked a date and time |
+| `booking_checkout_started` | Passed checks and started save (Continue to checkout) |
+| `booking_deposit_shown` | Deposit / payment screen appeared |
+| `booking_payment_attempt` | Tapped Pay, Apple Pay, or Google Pay |
+| `booking_payment_success` | Deposit went through |
+| `booking_payment_failed` | Payment was declined or cancelled |
+| `booking_drop` | Hit an error (`step`: contact, captcha, agreement, email, phone, slot, save) |
+
+In GA4: **Reports → Realtime → Event count by Event name**, or **Explore → Funnel exploration** with those events in order.
+
+**If the deposit is the stop:** `booking_deposit_shown` will be much higher than `booking_payment_success`. Failed attempts show as `booking_payment_failed`.
+
+**Admin dashboard:** filter **Deposit → Unpaid**. Those people submitted the form and reached checkout but never paid. Paid vs Unpaid also shows as a column on each row.
+
 ### What is tracked
 
 - Public pages (home, book, services, FAQ, etc.)
+- Booking steps listed above
 - **Not** tracked: `admin.html` (private dashboard)
 
 ---

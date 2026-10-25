@@ -73,12 +73,17 @@ const CONFIG = {
   // Keeps “today / past slot” logic correct even if the visitor’s device is set elsewhere.
   BOOKING_TIMEZONE: 'America/Los_Angeles',
 
-  // Blackout: Mon–Thu from May 4 – Oct 28, 2026
+  // Blackout: Mon–Fri from May 4 – Nov 5, 2026
   BLACKOUT_RANGE: {
     start: '2026-05-04',
-    end: '2026-10-28',
-    blockWeekdays: [1, 2, 3, 4],  // Monday through Thursday
+    end: '2026-11-05',
+    blockWeekdays: [1, 2, 3, 4, 5],  // Monday through Friday
   },
+
+  // Dates inside the weekday blackout that should stay bookable
+  BLACKOUT_EXCEPTIONS: [
+    '2026-10-30',  // Friday — keep open
+  ],
 
   // Blackout: specific dates (April 6–10, 2026 + 2026 federal holidays)
   BLACKOUT_DATES: [
@@ -92,8 +97,11 @@ const CONFIG = {
     '2026-09-07',   // Labor Day
     '2026-10-12',   // Columbus Day
     '2026-11-11',   // Veterans Day
-    '2026-11-26',   // Thanksgiving
+    '2026-11-23', '2026-11-24', '2026-11-25', '2026-11-26', '2026-11-27',  // Nov 23–27 (Thanksgiving week)
     '2026-12-25',   // Christmas
+    '2027-01-01',   // New Year's Day 2027
+    '2027-01-27', '2027-01-28', '2027-01-29', '2027-01-30', '2027-01-31',
+    '2027-02-01', '2027-02-02', '2027-02-03', '2027-02-04', '2027-02-05', '2027-02-06', '2027-02-07',  // Jan 27 – Feb 7, 2027
   ],
 
   // Manual holds — block specific date/time slots (personal bookings, etc.). Keep in sync with netlify/functions/lib/blackout-dates.mjs

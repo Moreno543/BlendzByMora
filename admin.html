@@ -114,6 +114,10 @@
     .admin-loading { color: var(--color-text-muted); margin-top: 1rem; }
     .admin-back { margin-top: 2rem; }
     .admin-back a { color: var(--color-accent); }
+    .admin-deposit-unpaid {
+      color: #c9a14a;
+      font-weight: 600;
+    }
     .btn-admin-filter-active {
       background: rgba(201, 169, 98, 0.2);
       border-color: var(--color-accent);
@@ -244,7 +248,7 @@
 
   <main class="admin-page">
     <h1>Upcoming appointments</h1>
-    <p class="admin-sub">Private schedule — default shows today through next Friday (Las Vegas). Pick any date range below, or use quick presets.</p>
+    <p class="admin-sub">Private schedule — default shows today through next Friday (Las Vegas). Pick any date range below, or use quick presets. Unpaid deposit means they submitted the form but did not finish paying.</p>
     <p id="admin-error" class="admin-error" style="display:none;"></p>
 
     <section id="admin-login" class="admin-card">
@@ -277,6 +281,12 @@
           <button type="button" class="btn-admin btn-admin-small" id="admin-preset-14">Next 14 days</button>
           <button type="button" class="btn-admin btn-admin-small" id="admin-preset-30">Next 30 days</button>
         </div>
+        <p class="admin-meta" style="margin-top:1rem;margin-bottom:0.35rem;">Deposit</p>
+        <div class="admin-presets" id="admin-deposit-filters">
+          <button type="button" class="btn-admin btn-admin-small btn-admin-filter-active" data-deposit-filter="all">All</button>
+          <button type="button" class="btn-admin btn-admin-small" data-deposit-filter="paid">Paid</button>
+          <button type="button" class="btn-admin btn-admin-small" data-deposit-filter="unpaid">Unpaid (stopped at deposit)</button>
+        </div>
         <p class="admin-meta" style="margin-top:1rem;margin-bottom:0.35rem;">SMS confirmation</p>
         <div class="admin-presets" id="admin-confirm-filters">
           <button type="button" class="btn-admin btn-admin-small btn-admin-filter-active" data-confirm-filter="all" id="admin-filter-all">All</button>
@@ -306,6 +316,7 @@
               <th>Phone</th>
               <th>Travel</th>
               <th>Notes</th>
+              <th>Deposit</th>
               <th>IP (submit)</th>
               <th>SMS opt-in</th>
               <th>SMS YES</th>
@@ -344,7 +355,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
-  <script src="config.js?v=1"></script>
-  <script src="admin.js?v=16"></script>
+  <script src="config.js?v=15"></script>
+  <script src="admin.js?v=21"></script>
 </body>
 </html>

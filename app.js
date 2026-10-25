@@ -46,6 +46,16 @@ document.addEventListener('DOMContentLoaded', () => {
   initServiceBookButtons();
 });
 
+function trackBooking(name, params) {
+  try {
+    if (typeof window.trackBookingEvent === 'function') {
+      window.trackBookingEvent(name, params);
+    }
+  } catch (_) {
+    /* ignore */
+  }
+}
+
 function initServiceBookButtons() {
   const header = document.querySelector('.header');
   const headerOffset = () => (header ? header.offsetHeight : 80);
@@ -314,6 +324,7 @@ function initDatePicker() {
   }
 
   const blackoutSet = new Set(CONFIG.BLACKOUT_DATES || []);
+  const exceptionSet = new Set(CONFIG.BLACKOUT_EXCEPTIONS || []);
   const range = CONFIG.BLACKOUT_RANGE;
   const blockWeekdays = new Set(range?.blockWeekdays || []);
 
@@ -337,6 +348,7 @@ function initDatePicker() {
       function (date) {
         try {
           const dateStr = flatpickrCellDateStr(date);
+          if (exceptionSet.has(dateStr)) return false;
           if (blackoutSet.has(dateStr)) return true;
           if (range?.start && range?.end && blockWeekdays.size) {
             if (dateStr >= range.start && dateStr <= range.end && blockWeekdays.has(date.getDay())) return true;
@@ -995,6 +1007,10 @@ function showBookedConfirmationPage({ serviceLabel, date, time, achPending }) {
 }
 
 function appendDepositSuccess(status, payBox, data, bookingDetails = {}) {
+  trackBooking('booking_payment_success', {
+    payment_method: bookingDetails.paymentMethod || (data.achPending ? 'ach' : 'card'),
+    service: bookingDetails.serviceLabel || '',
+  });
   showBookedConfirmationPage({
     serviceLabel: bookingDetails.serviceLabel,
     date: bookingDetails.date,
@@ -1272,6 +1288,8 @@ async function showBookingDepositPayment({
   const pct = Number(CONFIG.SQUARE_DEPOSIT_PERCENT || 50);
   if (!totalCents || !bookingId || !bookingDepositConfigured()) return false;
 
+  trackBooking('booking_deposit_shown', { service: serviceLabel || '' });
+
   const depositBaseCents = Math.round((totalCents * pct) / 100);
   const depositFeeCents = cardProcessingFeeCents(depositBaseCents);
   const depositCardChargeCents = cardChargeTotalCents(depositBaseCents);
@@ -1402,11 +1420,12 @@ async function showBookingDepositPayment({
 
   let walletPayBusy = false;
 
-  async function runWalletDeposit(wallet) {
+  async function runWalletDeposit(wallet, method) {
     if (walletPayBusy) return;
     walletPayBusy = true;
     payErr.hidden = true;
     payBtn.disabled = true;
+    trackBooking('booking_payment_attempt', { payment_method: method || 'wallet' });
     try {
       const sourceId = await tokenizeSquareWallet(wallet);
       const attemptId =
@@ -1421,8 +1440,14 @@ async function showBookingDepositPayment({
       });
       clearPendingAchDeposit();
       stripAchRedirectQuery();
-      appendDepositSuccess(status, payBox, data, { serviceLabel, date, time });
+      appendDepositSuccess(status, payBox, data, {
+        serviceLabel,
+        date,
+        time,
+        paymentMethod: method || 'wallet',
+      });
     } catch (err) {
+      trackBooking('booking_payment_failed', { payment_method: method || 'wallet' });
       payErr.hidden = false;
       payErr.textContent = err instanceof Error ? err.message : 'Wallet payment failed.';
       payBtn.disabled = false;
@@ -1452,13 +1477,13 @@ async function showBookingDepositPayment({
       googlePayContainer.onclick = (event) => {
         if (!bbmSquareGooglePay) return;
         event.preventDefault();
-        runWalletDeposit(bbmSquareGooglePay);
+        runWalletDeposit(bbmSquareGooglePay, 'google_pay');
       };
 
       applePayButton.onclick = (event) => {
         event.preventDefault();
         if (!bbmSquareApplePay) return;
-        runWalletDeposit(bbmSquareApplePay);
+        runWalletDeposit(bbmSquareApplePay, 'apple_pay');
       };
     } catch (err) {
       console.warn('[Blendz] Wallet buttons failed', err);
@@ -1554,6 +1579,7 @@ async function showBookingDepositPayment({
     payErr.hidden = true;
     payBtn.disabled = true;
     payBtn.textContent = 'Processing…';
+    trackBooking('booking_payment_attempt', { payment_method: paymentMethod });
     const attemptId =
       typeof crypto !== 'undefined' && crypto.randomUUID
         ? crypto.randomUUID()
@@ -1601,8 +1627,14 @@ async function showBookingDepositPayment({
       });
       clearPendingAchDeposit();
       stripAchRedirectQuery();
-      appendDepositSuccess(status, payBox, data, { serviceLabel, date, time });
+      appendDepositSuccess(status, payBox, data, {
+        serviceLabel,
+        date,
+        time,
+        paymentMethod,
+      });
     } catch (err) {
+      trackBooking('booking_payment_failed', { payment_method: paymentMethod });
       payErr.hidden = false;
       payErr.textContent = err instanceof Error ? err.message : 'Payment failed.';
       payBtn.disabled = false;
@@ -1712,6 +1744,25 @@ function initBookingForm() {
   const status = document.getElementById('booking-status');
   if (!form || !status) return;
 
+  trackBooking('booking_view');
+
+  const serviceEl = document.getElementById('service');
+  const dateEl = document.getElementById('date');
+  const timeEl = document.getElementById('time');
+  if (serviceEl?.value) {
+    trackBooking('booking_service_selected', { service: serviceEl.value });
+  }
+  serviceEl?.addEventListener('change', () => {
+    if (serviceEl.value) trackBooking('booking_service_selected', { service: serviceEl.value });
+  });
+  function maybeTrackDatetime() {
+    if ((dateEl?.value || '').trim() && (timeEl?.value || '').trim()) {
+      trackBooking('booking_datetime_selected', { service: serviceEl?.value || '' });
+    }
+  }
+  dateEl?.addEventListener('change', maybeTrackDatetime);
+  timeEl?.addEventListener('change', maybeTrackDatetime);
+
   const emailConfirm = document.getElementById('email-confirm');
   if (emailConfirm?.hasAttribute('readonly')) {
     emailConfirm.addEventListener(
@@ -1771,6 +1822,7 @@ function initBookingForm() {
       phone: form.phone.value,
     });
     if (!contact.ok) {
+      trackBooking('booking_drop', { step: 'contact' });
       status.className = 'booking-status error';
       status.textContent = contact.message;
       status.style.display = 'block';
@@ -1791,6 +1843,7 @@ function initBookingForm() {
         .toUpperCase()
         .replace(/\s/g, '');
       if (!typed || typed !== bookingCaptchaExpected) {
+        trackBooking('booking_drop', { step: 'captcha' });
         status.className = 'booking-status error';
         status.textContent =
           'The letters didn’t match the image. Try again or tap “New code”.';
@@ -1801,6 +1854,7 @@ function initBookingForm() {
     }
 
     if (document.getElementById('service-agreement')?.checked !== true) {
+      trackBooking('booking_drop', { step: 'agreement' });
       status.className = 'booking-status error';
       status.textContent =
         'Please read and agree to the Service Agreement before submitting your request.';
@@ -1815,6 +1869,7 @@ function initBookingForm() {
 
     const emailCheck = await verifyEmailDeliverable(contact.email);
     if (!emailCheck.ok) {
+      trackBooking('booking_drop', { step: 'email' });
       status.className = 'booking-status error';
       status.textContent = emailCheck.message;
       status.style.display = 'block';
@@ -1825,6 +1880,7 @@ function initBookingForm() {
 
     const lookupResult = await verifyPhoneWithTwilioLookup(contact.phoneFormatted);
     if (!lookupResult.ok) {
+      trackBooking('booking_drop', { step: 'phone' });
       status.className = 'booking-status error';
       status.textContent = lookupResult.message;
       status.style.display = 'block';
@@ -1858,6 +1914,7 @@ function initBookingForm() {
       !slotHasOneHourLead(normDate, payload.time)
     ) {
       status.className = 'booking-status error';
+      trackBooking('booking_drop', { step: 'slot' });
       status.textContent =
         'That date or time is no longer available. Please pick another slot (1 hour notice; last booking 4pm).';
       status.style.display = 'block';
@@ -1873,6 +1930,7 @@ function initBookingForm() {
     status.className = 'booking-status loading';
     status.textContent = 'Submitting...';
     status.style.display = 'block';
+    trackBooking('booking_checkout_started', { service: payload.service || '' });
 
     const hasSupabase = CONFIG.SUPABASE_URL && CONFIG.SUPABASE_ANON_KEY;
     const hasFormspree = CONFIG.FORMSPREE_BOOKING_ID;
@@ -2022,6 +2080,7 @@ function initBookingForm() {
         refreshBookingCaptcha();
       }
     } catch (err) {
+      trackBooking('booking_drop', { step: 'save' });
       status.className = 'booking-status error';
       status.textContent = 'Something went wrong. Please email BlendzByMora@gmail.com to book.';
       console.error(err);

@@ -1,7 +1,8 @@
 /**
  * Admin: list bookings in a date range (Las Vegas YYYY-MM-DD).
- * POST JSON: { token, start?, end?, confirmFilter? } — omit start/end for default week through next Friday.
+ * POST JSON: { token, start?, end?, confirmFilter?, depositFilter? } — omit start/end for default week through next Friday.
  * confirmFilter: "all" | "confirmed" | "unconfirmed" — filter by bookings.sms_confirmed_at (SMS YES).
+ * depositFilter: "all" | "paid" | "unpaid" — filter by bookings.deposit_paid_at.
  * Env: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, ADMIN_DASHBOARD_TOKEN
  */
 import { createClient } from '@supabase/supabase-js';
@@ -87,6 +88,14 @@ function resolveConfirmFilter(body) {
   return 'all';
 }
 
+/** Filter by deposit paid timestamp on bookings (column deposit_paid_at). */
+function resolveDepositFilter(body) {
+  const v = typeof body?.depositFilter === 'string' ? body.depositFilter.trim().toLowerCase() : '';
+  if (v === 'paid') return 'paid';
+  if (v === 'unpaid' || v === 'pending') return 'unpaid';
+  return 'all';
+}
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'Content-Type, X-Admin-Token',
@@ -133,12 +142,18 @@ export default async function handler(request) {
   }
   const { start, end, label: rangeLabel } = resolved;
   const confirmFilter = resolveConfirmFilter(body);
+  const depositFilter = resolveDepositFilter(body);
   const filterSuffix =
-    confirmFilter === 'confirmed'
+    (confirmFilter === 'confirmed'
       ? ' — SMS confirmed only'
       : confirmFilter === 'unconfirmed'
         ? ' — not SMS-confirmed only'
-        : '';
+        : '') +
+    (depositFilter === 'paid'
+      ? ' — deposit paid only'
+      : depositFilter === 'unpaid'
+        ? ' — unpaid deposit only'
+        : '');
   const label = rangeLabel + filterSuffix;
 
   const url = process.env.SUPABASE_URL;
@@ -166,6 +181,12 @@ export default async function handler(request) {
     query = query.is('sms_confirmed_at', null);
   }
 
+  if (depositFilter === 'paid') {
+    query = query.not('deposit_paid_at', 'is', null);
+  } else if (depositFilter === 'unpaid') {
+    query = query.is('deposit_paid_at', null);
+  }
+
   const { data, error } = await query.order('date', { ascending: true }).order('time', { ascending: true });
 
   if (error) {
@@ -181,6 +202,7 @@ export default async function handler(request) {
       ok: true,
       range: { start, end, label },
       confirmFilter,
+      depositFilter,
       count: bookings.length,
       bookings,
     }),
