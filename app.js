@@ -562,12 +562,14 @@ async function updateTimeSlots(dateStr) {
 }
 
 /** Optional hint inserted when the user selects Travel: Yes; never re-added on submit if they remove it. */
-const BOOKING_TRAVEL_NOTES_PREFIX = 'Travel was requested — please provide your location/address. ';
+const BOOKING_TRAVEL_NOTES_PREFIX =
+  'Travel was requested ($50 Las Vegas travel fee) — please provide your location/address. ';
 
 function stripAllBookingTravelPrefixes(raw) {
   let t = String(raw || '');
   const removable = [
     BOOKING_TRAVEL_NOTES_PREFIX,
+    'Travel was requested — please provide your location/address. ',
     'Travel requested — please include your location/address. ',
     'Travel requested. ',
   ];
@@ -1439,6 +1441,7 @@ async function showBookingDepositPayment({
     'Pay with <strong>Apple Pay</strong>, <strong>Google Pay</strong>, credit or debit card, or <strong>bank transfer (ACH)</strong>. ' +
     'Card and wallet payments include a <strong>3.3% + $0.30 processing fee</strong> on each transaction (deposit and balance are billed separately). ' +
     'Bank transfer has no card processing fee and typically takes 2–3 business days. Cash and Zelle are accepted for the balance where agreed. ' +
+    'A <strong>standard travel fee of $50</strong> is charged for Las Vegas travel appointments, in addition to the service price. ' +
     'Full terms: <a href="terms.html" target="_blank" rel="noopener">Terms of Service</a> · <a href="service-agreement.html" target="_blank" rel="noopener">Service Agreement</a>.';
   policies.appendChild(policiesBody);
   payBox.appendChild(policies);
