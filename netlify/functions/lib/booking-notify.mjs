@@ -53,6 +53,7 @@ export async function sendBookingConfirmationEmail(row, { depositPaid = false, p
           ? 'Thank you for booking with Blendz By Mora. Your bank transfer deposit has been received and your appointment is secured.\n\n'
           : 'Thank you for booking with Blendz By Mora. Your deposit has been received and your appointment is secured.\n\n') +
       'Below is a copy of your booking for your records.\n\n' +
+      'We will personally reach out with the appointment address unless you selected travel and included a location for us to come to you.\n\n' +
       `You agreed to our Service Agreement (version ${agreementVersion}). Keep this link for your records:\n${agreementUrl}\n\n` +
       (paidByAch
         ? 'The remaining balance will be invoiced for your service date. You may pay that invoice by bank transfer (ACH) with no card processing fee, or by card (3.3% + $0.30 processing fee applies to card payments). Cash and Zelle are also accepted where agreed.\n\n'

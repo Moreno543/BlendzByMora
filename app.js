@@ -1442,6 +1442,7 @@ async function showBookingDepositPayment({
     'Card and wallet payments include a <strong>3.3% + $0.30 processing fee</strong> on each transaction (deposit and balance are billed separately). ' +
     'Bank transfer has no card processing fee and typically takes 2–3 business days. Cash and Zelle are accepted for the balance where agreed. ' +
     'A <strong>standard travel fee of $50</strong> is charged for Las Vegas travel appointments, in addition to the service price. ' +
+    'After you book, we personally reach out with the appointment address unless you selected travel and included a location for us to come to you. ' +
     'Full terms: <a href="terms.html" target="_blank" rel="noopener">Terms of Service</a> · <a href="service-agreement.html" target="_blank" rel="noopener">Service Agreement</a>.';
   policies.appendChild(policiesBody);
   payBox.appendChild(policies);
