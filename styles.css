@@ -1873,21 +1873,24 @@ details[open] .faq-question::after {
   }
 
   .work-hero {
-    min-height: 85vh;
-    align-items: flex-end;
+    min-height: 0;
+    display: block;
+  }
+
+  .work-hero > img {
+    position: static;
+    width: 100%;
+    height: auto;
+    object-fit: contain;
+    object-position: center;
   }
 
   .work-hero::after {
-    background: linear-gradient(
-      180deg,
-      rgba(10, 10, 10, 0.2) 0%,
-      rgba(10, 10, 10, 0.55) 45%,
-      rgba(10, 10, 10, 0.92) 100%
-    );
+    display: none;
   }
 
   .work-hero-copy {
-    padding: 6rem 1.25rem 2.5rem;
+    padding: 1.5rem 1.25rem 2rem;
   }
 
   .work-grid {
