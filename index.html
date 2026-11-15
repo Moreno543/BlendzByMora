@@ -49,20 +49,68 @@
     </div>
   </section>
 
-  <!-- What Clients Say -->
-  <section id="testimonials" class="reviews-display-section">
-    <div id="reviews-display" class="reviews-display">
-      <h2>What Clients Say</h2>
-      <div class="reviews-carousel">
-        <button type="button" class="carousel-btn carousel-prev" aria-label="Previous review">←</button>
-        <div id="reviews-list" class="reviews-list">
-          <!-- Reviews loaded dynamically -->
-        </div>
-        <button type="button" class="carousel-btn carousel-next" aria-label="Next review">→</button>
+  <section id="work" class="work">
+    <div class="work-hero">
+      <img src="assets/work/IMG_6782.jpg" alt="Blendz By Mora applying makeup for a client">
+      <div class="work-hero-copy">
+        <p class="work-hero-kicker">Las Vegas</p>
+        <h2>Makeup Artist</h2>
+        <p>I’m Rae. Ready for glam — photo shoots, nights out, bridal, models, and designers. Whatever the moment, I build a look that’s yours and made to last.</p>
+        <a href="book.html" class="btn btn-primary">Book Now</a>
       </div>
-      <div id="reviews-dots" class="reviews-dots"></div>
+    </div>
+    <div class="work-portfolio">
+      <h3>Las Vegas Fashion Week</h3>
+      <p class="work-intro">Looks from the runway and backstage. Tap a photo to view it larger.</p>
+      <div class="work-grid">
+        <figure class="work-piece">
+          <button type="button" class="work-item"><img src="assets/work/IMG_6778.jpg" alt="Client checking a finished glam look with a Blendz By Mora mirror" loading="lazy"></button>
+          <figcaption>Backstage at fashion week — Blendz By Mora</figcaption>
+        </figure>
+        <figure class="work-piece">
+          <button type="button" class="work-item"><img src="assets/work/IMG_6731.jpg" alt="Runway makeup look in ivory lace at Las Vegas Fashion Week" loading="lazy"></button>
+          <figcaption>Las Vegas Fashion Week — ivory lace runway glam</figcaption>
+        </figure>
+        <figure class="work-piece">
+          <button type="button" class="work-item"><img src="assets/work/IMG_6736.jpg" alt="Runway makeup look with a white gown and pink gloves" loading="lazy"></button>
+          <figcaption>Runway glam — white gown and pink gloves</figcaption>
+        </figure>
+        <figure class="work-piece">
+          <button type="button" class="work-item"><img src="assets/work/IMG_6737.jpg" alt="Close-up runway glam with pink gloves and polka-dot wrap" loading="lazy"></button>
+          <figcaption>Close-up — polished skin and defined eyes</figcaption>
+        </figure>
+        <figure class="work-piece">
+          <button type="button" class="work-item"><img src="assets/work/IMG_6776.jpg" alt="Full glam makeup with a black sequin gown" loading="lazy"></button>
+          <figcaption>Full glam — black sequin, red lip</figcaption>
+        </figure>
+        <figure class="work-piece">
+          <button type="button" class="work-item"><img src="assets/work/IMG_6777.jpg" alt="Sleek bun and red lip with a black sequin backless gown" loading="lazy"></button>
+          <figcaption>Sleek bun and lasting red lip</figcaption>
+        </figure>
+        <figure class="work-piece">
+          <button type="button" class="work-item"><img src="assets/work/IMG_6779.jpg" alt="Red lip glam with a leopard print runway look" loading="lazy"></button>
+          <figcaption>Runway red lip — leopard print look</figcaption>
+        </figure>
+        <figure class="work-piece">
+          <button type="button" class="work-item"><img src="assets/work/IMG_6765.jpg" alt="Glossy red lip glam with a navy blazer runway look" loading="lazy"></button>
+          <figcaption>Glossy red lip — navy blazer editorial</figcaption>
+        </figure>
+        <figure class="work-piece">
+          <button type="button" class="work-item"><img src="assets/work/IMG_6758.jpg" alt="Full-length runway glam in a navy blazer and wide-leg denim" loading="lazy"></button>
+          <figcaption>Full-length runway — blazer and denim</figcaption>
+        </figure>
+        <figure class="work-piece">
+          <button type="button" class="work-item"><img src="assets/work/IMG_6735.jpg" alt="Runway glam in a white gown with a floral detail" loading="lazy"></button>
+          <figcaption>Fashion week — floral gown and pink gloves</figcaption>
+        </figure>
+      </div>
     </div>
   </section>
+
+  <div id="work-lightbox" class="work-lightbox" role="dialog" aria-modal="true" aria-label="Photo">
+    <button type="button" class="work-lightbox-close" aria-label="Close photo">&times;</button>
+    <img alt="">
+  </div>
 
   <!-- Services overview -->
   <section id="services" class="services home-services">
@@ -83,6 +131,21 @@
         </div>
         <p class="bucket-summary-text">Complete bridal and wedding party makeup—from day-of bridal makeup to trials, rehearsal dinner glam, bridesmaid and family looks, and full wedding packages.</p>
       </a>
+    </div>
+  </section>
+
+  <!-- What Clients Say -->
+  <section id="testimonials" class="reviews-display-section">
+    <div id="reviews-display" class="reviews-display">
+      <h2>What Clients Say</h2>
+      <div class="reviews-carousel">
+        <button type="button" class="carousel-btn carousel-prev" aria-label="Previous review">←</button>
+        <div id="reviews-list" class="reviews-list">
+          <!-- Reviews loaded dynamically -->
+        </div>
+        <button type="button" class="carousel-btn carousel-next" aria-label="Next review">→</button>
+      </div>
+      <div id="reviews-dots" class="reviews-dots"></div>
     </div>
   </section>
 
@@ -140,6 +203,6 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js?v=10"></script>
   <script src="analytics.js?v=1"></script>
-  <script src="app.js?v=34"></script>
+  <script src="app.js?v=36"></script>
 </body>
 </html>

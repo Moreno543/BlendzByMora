@@ -41,6 +41,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   initMobileMenu();
+  initWorkLightbox();
   initInPageHashScrollOnLoad();
   initNavScroll();
   initDatePicker();
@@ -138,6 +139,38 @@ function initGoogleReviewLink() {
     link.href = CONFIG.GOOGLE_REVIEW_URL || 'https://www.google.com/search?q=BlendzByMora&stick=H4sIAAAAAAAA_-NgU1I1qEhMSzUzNzW2tLBMSUlLszS3MqhINTEzNEtJS04xNzA0MTKyWMTK45STmpdS5VTpm1-UCADuQv8zOAAAAA&hl=en';
     link.title = 'Leave a review for Blendz By Mora on Google';
   }
+}
+
+function initWorkLightbox() {
+  const work = document.querySelector('.work');
+  const lightbox = document.getElementById('work-lightbox');
+  const lightboxImg = lightbox?.querySelector('img');
+  const closeBtn = lightbox?.querySelector('.work-lightbox-close');
+  if (!work || !lightbox || !lightboxImg) return;
+
+  const close = () => {
+    lightbox.classList.remove('is-open');
+    lightboxImg.removeAttribute('src');
+    lightboxImg.alt = '';
+  };
+
+  work.addEventListener('click', (e) => {
+    const item = e.target.closest('.work-item');
+    if (!item) return;
+    const img = item.querySelector('img');
+    if (!img) return;
+    lightboxImg.src = img.currentSrc || img.src;
+    lightboxImg.alt = img.alt || '';
+    lightbox.classList.add('is-open');
+  });
+
+  closeBtn?.addEventListener('click', close);
+  lightbox.addEventListener('click', (e) => {
+    if (e.target === lightbox) close();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && lightbox.classList.contains('is-open')) close();
+  });
 }
 
 // Mobile menu toggle
