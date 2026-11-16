@@ -1007,6 +1007,30 @@ function formatBookedServiceLabel(serviceLabel) {
   return withoutPrice || raw;
 }
 
+const CURRENT_SERVICE_DISPLAY = {
+  'soft glam': 'Soft Glam - $120',
+  'full glam': 'Full Glam - $160',
+  'mother of the bride glam': 'Mother of the Bride Glam - $140',
+  'mother of the groom glam': 'Mother of the Groom Glam - $140',
+  'bridesmaid glam': 'Bridesmaid Glam - $140',
+  'day-of bridal makeup': 'Day-of Bridal Makeup - $300',
+  'day of bridal makeup': 'Day-of Bridal Makeup - $300',
+  'bridal glam + rehearsal dinner glam': 'Bridal Glam + Rehearsal Dinner Glam - $400',
+  'bridal glam + bridal trial + custom touch up kit': 'Bridal Glam + Bridal Trial + Custom Touch Up Kit - $500',
+  'bridal trial + rehearsal dinner glam + day of bridal glam + custom touch-up kit':
+    'Bridal Trial + Rehearsal Dinner Glam + Day of Bridal Glam + Custom Touch-up Kit - $600',
+};
+
+function formatReviewServiceLabel(serviceLabel) {
+  const raw = String(serviceLabel || '').trim();
+  if (!raw) return '';
+  const name = formatBookedServiceLabel(raw).toLowerCase().replace(/\s+/g, ' ');
+  return CURRENT_SERVICE_DISPLAY[name] || raw.replace(/\$\d+(?:\.\d{2})?/, (m) => {
+    const mapped = CURRENT_SERVICE_DISPLAY[name];
+    return mapped ? mapped.match(/\$\d+/)?.[0] || m : m;
+  });
+}
+
 function formatBookedDateLabel(dateStr) {
   const norm = normalizeDateStr(dateStr);
   if (!norm) return String(dateStr || '').trim();
@@ -2540,10 +2564,10 @@ function renderReviewCarousel() {
     ? `<div class="review-item-image"><img class="review-item-img" src="${escapeAttr(imgSrc)}" alt="" loading="lazy" decoding="async"></div>`
     : '';
 
-  const serviceLine =
-    r.service && String(r.service).trim()
-      ? `<div class="review-item-service">${escapeHtml(String(r.service).trim())}</div>`
-      : '';
+  const serviceDisplay = formatReviewServiceLabel(r.service);
+  const serviceLine = serviceDisplay
+    ? `<div class="review-item-service">${escapeHtml(serviceDisplay)}</div>`
+    : '';
 
   list.innerHTML = `
     <div class="review-item review-item-allure${imgSrc ? ' review-item-allure--has-photo' : ''}">
