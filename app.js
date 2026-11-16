@@ -1007,28 +1007,32 @@ function formatBookedServiceLabel(serviceLabel) {
   return withoutPrice || raw;
 }
 
-const CURRENT_SERVICE_DISPLAY = {
-  'soft glam': 'Soft Glam - $120',
-  'full glam': 'Full Glam - $160',
-  'mother of the bride glam': 'Mother of the Bride Glam - $140',
-  'mother of the groom glam': 'Mother of the Groom Glam - $140',
-  'bridesmaid glam': 'Bridesmaid Glam - $140',
-  'day-of bridal makeup': 'Day-of Bridal Makeup - $300',
-  'day of bridal makeup': 'Day-of Bridal Makeup - $300',
-  'bridal glam + rehearsal dinner glam': 'Bridal Glam + Rehearsal Dinner Glam - $400',
-  'bridal glam + bridal trial + custom touch up kit': 'Bridal Glam + Bridal Trial + Custom Touch Up Kit - $500',
-  'bridal trial + rehearsal dinner glam + day of bridal glam + custom touch-up kit':
-    'Bridal Trial + Rehearsal Dinner Glam + Day of Bridal Glam + Custom Touch-up Kit - $600',
-};
+const CURRENT_SERVICE_MATCHERS = [
+  {
+    test: /bridal\s*trial.*rehearsal.*day\s*of/i,
+    label: 'Bridal Trial + Rehearsal Dinner Glam + Day of Bridal Glam + Custom Touch-up Kit - $600',
+  },
+  {
+    test: /bridal\s*glam.*bridal\s*trial/i,
+    label: 'Bridal Glam + Bridal Trial + Custom Touch Up Kit - $500',
+  },
+  {
+    test: /bridal\s*glam.*rehearsal/i,
+    label: 'Bridal Glam + Rehearsal Dinner Glam - $400',
+  },
+  { test: /day[-\s]?of\s*bridal/i, label: 'Day-of Bridal Makeup - $300' },
+  { test: /bridesmaid/i, label: 'Bridesmaid Glam - $140' },
+  { test: /mother of the bride/i, label: 'Mother of the Bride Glam - $140' },
+  { test: /mother of the groom/i, label: 'Mother of the Groom Glam - $140' },
+  { test: /soft\s*glams?/i, label: 'Soft Glam - $120' },
+  { test: /full\s*glams?/i, label: 'Full Glam - $160' },
+];
 
 function formatReviewServiceLabel(serviceLabel) {
   const raw = String(serviceLabel || '').trim();
   if (!raw) return '';
-  const name = formatBookedServiceLabel(raw).toLowerCase().replace(/\s+/g, ' ');
-  return CURRENT_SERVICE_DISPLAY[name] || raw.replace(/\$\d+(?:\.\d{2})?/, (m) => {
-    const mapped = CURRENT_SERVICE_DISPLAY[name];
-    return mapped ? mapped.match(/\$\d+/)?.[0] || m : m;
-  });
+  const match = CURRENT_SERVICE_MATCHERS.find((entry) => entry.test.test(raw));
+  return match ? match.label : raw;
 }
 
 function formatBookedDateLabel(dateStr) {
